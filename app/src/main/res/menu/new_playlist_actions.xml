@@ -3,9 +3,13 @@
     <item
         android:id="@+id/action_import_playlist"
         android:icon="@drawable/ic_import_24"
-        android:title="@string/lbl_imported_playlist" />
+        android:title="@string/lbl_import_playlists" />
     <item
         android:id="@+id/action_new_playlist"
         android:icon="@drawable/ic_playlist_24"
         android:title="@string/lbl_empty_playlist" />
+    <item
+        android:id="@+id/action_export_playlists"
+        android:icon="@drawable/ic_export_24"
+        android:title="@string/set_export_playlists" />
 </menu>

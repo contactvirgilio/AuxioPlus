@@ -28,6 +28,20 @@
 
     </PreferenceCategory>
 
+    <PreferenceCategory app:title="@string/lbl_playlists">
+
+        <org.oxycblt.auxio.settings.ui.ProgressPreference
+            app:key="@string/set_key_export_playlists"
+            app:summary="@string/set_export_playlists_desc"
+            app:title="@string/set_export_playlists" />
+
+        <org.oxycblt.auxio.settings.ui.ProgressPreference
+            app:key="@string/set_key_import_playlists"
+            app:summary="@string/set_import_playlists_desc"
+            app:title="@string/set_import_playlists" />
+
+    </PreferenceCategory>
+
     <PreferenceCategory app:title="@string/set_images">
 
         <org.oxycblt.auxio.settings.ui.IntListPreference

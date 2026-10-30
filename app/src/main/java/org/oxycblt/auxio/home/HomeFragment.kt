@@ -55,6 +55,7 @@ import org.oxycblt.auxio.list.menu.Menu
 import org.oxycblt.auxio.music.IndexingState
 import org.oxycblt.auxio.music.MusicType
 import org.oxycblt.auxio.music.MusicViewModel
+import org.oxycblt.auxio.music.PlaylistBackupState
 import org.oxycblt.auxio.music.PlaylistDecision
 import org.oxycblt.auxio.music.PlaylistMessage
 import org.oxycblt.auxio.playback.PlaybackDecision
@@ -172,6 +173,7 @@ class HomeFragment : SelectionFragment<FragmentHomeBinding>() {
         collectImmediately(musicModel.indexingState, ::updateIndexerState)
         collect(musicModel.playlistDecision.flow, ::handlePlaylistDecision)
         collectImmediately(musicModel.playlistMessage.flow, ::handlePlaylistMessage)
+        collectImmediately(musicModel.playlistBackupState, ::updatePlaylistBackupState)
         collect(playbackModel.playbackDecision.flow, ::handlePlaybackDecision)
     }
 
@@ -323,6 +325,58 @@ class HomeFragment : SelectionFragment<FragmentHomeBinding>() {
             }
             null -> {
                 binding.homeIndexingContainer.isInvisible = true
+            }
+        }
+    }
+
+    private fun updatePlaylistBackupState(state: PlaylistBackupState?) {
+        val binding = requireBinding()
+        val container = binding.homePlaylistBackupContainer
+        val progressBar = binding.homePlaylistBackupProgress
+        when (state) {
+            is PlaylistBackupState.Running -> {
+                val title =
+                    when (state.operation) {
+                        PlaylistBackupState.Operation.EXPORT -> R.string.set_exporting_playlists
+                        PlaylistBackupState.Operation.IMPORT -> R.string.set_importing_playlists
+                    }
+                if (state.total > 0) {
+                    val count = getString(R.string.fmt_playlist_progress, state.done, state.total)
+                    binding.homePlaylistBackupText.text =
+                        getString(R.string.fmt_playlist_backup_status, getString(title), count)
+                    progressBar.isVisible = true
+                    // On an indeterminate bar this smoothly switches it to determinate mode.
+                    progressBar.setProgressCompat(state.done * progressBar.max / state.total, true)
+                } else {
+                    binding.homePlaylistBackupText.setText(title)
+                    if (!progressBar.isIndeterminate) {
+                        // Some versions of the progress indicator refuse to switch to
+                        // indeterminate mode while visible, so only do it while hidden.
+                        progressBar.isVisible = false
+                        progressBar.isIndeterminate = true
+                    }
+                    progressBar.isVisible = true
+                }
+                container.setOnClickListener(null)
+                container.isClickable = false
+                container.isVisible = true
+            }
+            is PlaylistBackupState.Failed -> {
+                val error =
+                    when (state.operation) {
+                        PlaylistBackupState.Operation.EXPORT -> R.string.err_export_playlists_failed
+                        PlaylistBackupState.Operation.IMPORT -> R.string.err_import_playlists_failed
+                    }
+                binding.homePlaylistBackupText.setText(error)
+                progressBar.isVisible = false
+                progressBar.isIndeterminate = true
+                // Tapping the error dismisses it, the action can be retried from the menu.
+                container.setOnClickListener { musicModel.dismissPlaylistBackupError() }
+                container.isVisible = true
+            }
+            null -> {
+                container.isVisible = false
+                progressBar.isIndeterminate = true
             }
         }
     }

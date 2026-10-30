@@ -86,6 +86,7 @@
     <string name="lbl_new_playlist">New playlist</string>
     <string name="lbl_empty_playlist">Empty playlist</string>
     <string name="lbl_imported_playlist">Imported playlist</string>
+    <string name="lbl_import_playlists">Import playlists</string>
     <string name="lbl_import">Import</string>
     <string name="lbl_import_playlist">Import playlist</string>
     <string name="lbl_export">Export</string>
@@ -294,6 +295,12 @@
     <string name="set_cover_mode_as_is">As is</string>
     <string name="set_square_covers">Force square album covers</string>
     <string name="set_square_covers_desc">Crop all album covers to a 1:1 aspect ratio</string>
+    <string name="set_export_playlists">Export all playlists</string>
+    <string name="set_export_playlists_desc">Save every playlist to one zip file, with paths relative to where it is saved</string>
+    <string name="set_import_playlists">Import all playlists</string>
+    <string name="set_import_playlists_desc">Restore playlists from zip files or M3U files. Playlists with the same name are replaced</string>
+    <string name="set_exporting_playlists">Exporting playlists…</string>
+    <string name="set_importing_playlists">Importing playlists…</string>
 
     <string name="set_audio">Audio</string>
     <string name="set_audio_desc">Configure sound and playback behavior</string>
@@ -347,6 +354,8 @@
     <string name="err_index_failed">Music loading failed</string>
     <string name="err_import_failed">Unable to import a playlist from this file</string>
     <string name="err_export_failed">Unable to export the playlist to this file</string>
+    <string name="err_export_playlists_failed">Unable to export playlists to this file. Tap to try again</string>
+    <string name="err_import_playlists_failed">No playlists could be imported from these files. Tap to try again</string>
     <string name="err_share_too_large">This is too large to share</string>
     <string name="err_share_failed">Unable to share this</string>
     <string name="err_no_app">No app found that can handle this task</string>
@@ -456,6 +465,10 @@
     <string name="fmt_disc_no">Disc %d</string>
     <!-- As in "Playlist 1", "Playlist 2", etc. -->
     <string name="fmt_def_playlist">Playlist %d</string>
+    <!-- As in the progress of exporting or importing playlists, e.g "3 of 12" -->
+    <string name="fmt_playlist_progress">%1$d of %2$d</string>
+    <!-- As in a task and how far along it is, e.g "Exporting playlists… 3 of 12" -->
+    <string name="fmt_playlist_backup_status">%1$s %2$s</string>
 
     <!-- Use your native country's abbreviation for decibel units. -->
     <string name="fmt_db_pos">+%.1f dB</string>

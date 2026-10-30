@@ -24,6 +24,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import javax.inject.Inject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -51,7 +54,7 @@ import timber.log.Timber as L
 class MusicViewModel
 @Inject
 constructor(
-    @ApplicationContext context: Context,
+    @ApplicationContext private val context: Context,
     private val listSettings: ListSettings,
     private val musicRepository: MusicRepository,
 ) : ViewModel(), MusicRepository.UpdateListener, MusicRepository.IndexingListener {
@@ -80,6 +83,15 @@ constructor(
     private val _playlistMessage = MutableEvent<PlaylistMessage>()
     val playlistMessage: Event<PlaylistMessage>
         get() = _playlistMessage
+
+    private val _playlistBackupState = MutableStateFlow<PlaylistBackupState?>(null)
+
+    /**
+     * The state of the current (or last failed) export/import of all playlists, or null if none is
+     * running and the last one succeeded.
+     */
+    val playlistBackupState: StateFlow<PlaylistBackupState?>
+        get() = _playlistBackupState
 
     init {
         musicRepository.addUpdateListener(this)
@@ -233,6 +245,136 @@ constructor(
         } else {
             L.d("Launching export dialog")
             _playlistDecision.put(PlaylistDecision.Export(playlist))
+        }
+    }
+
+    /**
+     * Export every playlist into one zip file at [uri], using relative paths. Progress and failures
+     * are pushed to [playlistBackupState]; nothing is shown when it finishes successfully.
+     *
+     * @param uri The [Uri] of the zip file to write.
+     */
+    fun exportAllPlaylists(uri: Uri) {
+        if (_playlistBackupState.value is PlaylistBackupState.Running) return
+        val operation = PlaylistBackupState.Operation.EXPORT
+        _playlistBackupState.value = PlaylistBackupState.Running(operation, 0, 0)
+        viewModelScope.launch(Dispatchers.IO) {
+            val library = musicRepository.library
+            if (library == null) {
+                L.e("No library to export playlists from")
+                _playlistBackupState.value = PlaylistBackupState.Failed(operation)
+                return@launch
+            }
+            val playlists = library.playlists.sortedBy { it.name.raw.lowercase() }
+            L.d("Exporting ${playlists.size} playlists to $uri")
+            val config = ExportConfig(absolute = false, windowsPaths = false)
+            val exported =
+                externalPlaylistManager.exportAll(playlists, uri, config) { done, total ->
+                    _playlistBackupState.value = PlaylistBackupState.Running(operation, done, total)
+                }
+            _playlistBackupState.value =
+                if (exported) {
+                    null
+                } else {
+                    L.e("Could not export playlists")
+                    PlaylistBackupState.Failed(operation)
+                }
+        }
+    }
+
+    /**
+     * Import playlists from several files at once. Each file can be a zip made by
+     * [exportAllPlaylists] (or any zip of M3U files) or a single M3U file. A playlist whose name
+     * already exists is overwritten instead of duplicated. Progress and failures are pushed to
+     * [playlistBackupState]; nothing is shown when it finishes successfully.
+     *
+     * @param uris The [Uri]s of the files to read.
+     * @param nameSingleFile Whether a single M3U file should be handed to [importPlaylist] instead,
+     *   so the user can still name it.
+     */
+    fun importPlaylistFiles(uris: List<Uri>, nameSingleFile: Boolean = true) {
+        if (uris.isEmpty() || _playlistBackupState.value is PlaylistBackupState.Running) return
+        val operation = PlaylistBackupState.Operation.IMPORT
+        viewModelScope.launch(Dispatchers.IO) {
+            val zipUris = uris.filter { externalPlaylistManager.isZip(it) }
+            if (nameSingleFile && uris.size == 1 && zipUris.isEmpty()) {
+                L.d("Single playlist file picked, importing it normally")
+                importPlaylist(uris.first())
+                return@launch
+            }
+
+            // Reading the files has no meaningful progress, so start indeterminate.
+            _playlistBackupState.value = PlaylistBackupState.Running(operation, 0, 0)
+            val importedPlaylists =
+                uris.flatMap { uri ->
+                    if (uri in zipUris) {
+                        externalPlaylistManager.importAll(uri) ?: listOf()
+                    } else {
+                        listOfNotNull(externalPlaylistManager.import(uri))
+                    }
+                }
+            if (importedPlaylists.isEmpty() || musicRepository.library == null) {
+                L.e("Could not import playlists from $uris")
+                _playlistBackupState.value = PlaylistBackupState.Failed(operation)
+                return@launch
+            }
+
+            val total = importedPlaylists.size
+            val fallbackName = context.getString(R.string.lbl_imported_playlist)
+            // Names created during this import, so duplicates inside the zip don't overwrite
+            // each other.
+            val createdNames = mutableSetOf<String>()
+            var restored = 0
+            _playlistBackupState.value = PlaylistBackupState.Running(operation, 0, total)
+            importedPlaylists.forEachIndexed { index, imported ->
+                // The library changes after every playlist write, so re-fetch it each time.
+                val library = musicRepository.library
+                if (library != null) {
+                    val songs =
+                        imported.paths.mapNotNull {
+                            it.firstNotNullOfOrNull(library::findSongByPath)
+                        }
+                    if (songs.isNotEmpty()) {
+                        val name = imported.name ?: fallbackName
+                        val existing =
+                            if (name in createdNames) null
+                            else library.playlists.find { it.name.raw == name }
+                        if (existing != null) {
+                            musicRepository.rewritePlaylist(existing, songs)
+                        } else {
+                            musicRepository.createPlaylist(name, songs)
+                        }
+                        createdNames.add(name)
+                        ++restored
+                    } else {
+                        L.w("No songs found for playlist ${imported.name}, skipping")
+                    }
+                }
+                _playlistBackupState.value =
+                    PlaylistBackupState.Running(operation, index + 1, total)
+            }
+
+            _playlistBackupState.value =
+                if (restored > 0) {
+                    L.d("Imported $restored of $total playlists")
+                    null
+                } else {
+                    L.e("None of the playlists matched any songs")
+                    PlaylistBackupState.Failed(operation)
+                }
+        }
+    }
+
+    /** A file name for a new zip of all playlists, e.g "Auxio-playlists-2026-10-30_14-40.zip". */
+    fun newPlaylistBackupName(): String {
+        val date = SimpleDateFormat("yyyy-MM-dd_HH-mm", Locale.US).format(Date())
+        return "Auxio-playlists-$date.zip"
+    }
+
+    /** Hide the error shown after a failed export/import of all playlists. */
+    fun dismissPlaylistBackupError() {
+        if (_playlistBackupState.value is PlaylistBackupState.Failed) {
+            _playlistBackupState.value = null
         }
     }
 
@@ -444,6 +586,33 @@ sealed interface PlaylistDecision {
      * @param songs The [Song]s to add to the chosen [Playlist].
      */
     data class Add(val songs: List<Song>) : PlaylistDecision
+}
+
+/**
+ * The state of exporting or importing all playlists at once.
+ *
+ * @see MusicViewModel.exportAllPlaylists
+ * @see MusicViewModel.importPlaylistFiles
+ */
+sealed interface PlaylistBackupState {
+    val operation: Operation
+
+    /**
+     * The operation is running.
+     *
+     * @param done The number of playlists handled so far.
+     * @param total The total number of playlists, or 0 if not known yet.
+     */
+    data class Running(override val operation: Operation, val done: Int, val total: Int) :
+        PlaylistBackupState
+
+    /** The last run of the operation failed. */
+    data class Failed(override val operation: Operation) : PlaylistBackupState
+
+    enum class Operation {
+        EXPORT,
+        IMPORT
+    }
 }
 
 sealed interface PlaylistMessage {

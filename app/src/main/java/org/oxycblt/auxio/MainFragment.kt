@@ -24,6 +24,8 @@ import android.view.ViewTreeObserver
 import android.view.WindowInsets
 import androidx.activity.BackEventCompat
 import androidx.activity.OnBackPressedCallback
+import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.view.ViewCompat
 import androidx.core.view.isInvisible
 import androidx.core.view.isVisible
@@ -70,6 +72,7 @@ import org.oxycblt.auxio.util.navigateSafe
 import org.oxycblt.auxio.util.unlikelyToBeNull
 import org.oxycblt.musikr.Music
 import org.oxycblt.musikr.Song
+import org.oxycblt.musikr.playlist.ExternalPlaylistManager
 import timber.log.Timber as L
 
 /**
@@ -98,11 +101,34 @@ class MainFragment :
     private var maxScaleXDistance = 0f
     private var sheetRising: Boolean? = null
     @Inject lateinit var uiSettings: UISettings
+    private var exportPlaylistsLauncher: ActivityResultLauncher<String>? = null
+    private var importPlaylistsLauncher: ActivityResultLauncher<Array<String>>? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enterTransition = MaterialFadeThrough()
         exitTransition = MaterialFadeThrough()
+
+        val createZip =
+            ActivityResultContracts.CreateDocument(ExternalPlaylistManager.ZIP_MIME_TYPE)
+        exportPlaylistsLauncher =
+            registerForActivityResult(createZip) { uri ->
+                if (uri == null) {
+                    L.w("No URI returned from file picker")
+                    return@registerForActivityResult
+                }
+                L.d("Exporting all playlists to $uri")
+                musicModel.exportAllPlaylists(uri)
+            }
+        importPlaylistsLauncher =
+            registerForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
+                if (uris.isEmpty()) {
+                    L.w("No URIs returned from file picker")
+                    return@registerForActivityResult
+                }
+                L.d("Importing playlists from ${uris.size} files")
+                musicModel.importPlaylistFiles(uris)
+            }
     }
 
     override fun onCreateBinding(inflater: LayoutInflater) = FragmentMainBinding.inflate(inflater)
@@ -390,8 +416,18 @@ class MainFragment :
                 musicModel.createPlaylist()
             }
             R.id.action_import_playlist -> {
-                L.d("Importing playlist")
-                musicModel.importPlaylist()
+                L.d("Importing playlists")
+                requireNotNull(importPlaylistsLauncher) {
+                        "Import playlists launcher was not available"
+                    }
+                    .launch(ExternalPlaylistManager.IMPORT_MIME_TYPES)
+            }
+            R.id.action_export_playlists -> {
+                L.d("Exporting all playlists")
+                requireNotNull(exportPlaylistsLauncher) {
+                        "Export playlists launcher was not available"
+                    }
+                    .launch(musicModel.newPlaylistBackupName())
             }
             else -> {}
         }
