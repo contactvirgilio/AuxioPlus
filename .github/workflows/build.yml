@@ -3,13 +3,11 @@ name: Build AuxioPlus APK
 # Builds a downloadable APK on every push and when run by hand from the Actions tab.
 # Publishing a GitHub Release (e.g. tag v1.0) builds the APK and attaches it to that release.
 #
-# Signing: add these repository secrets (Settings > Secrets and variables > Actions) so every
-# build is signed with the same key and installs as an update over the previous one:
-#   KEYSTORE_BASE64    the keystore file, base64-encoded (base64 -w0 my.jks)
-#   KEYSTORE_PASSWORD  the keystore password
-#   KEY_ALIAS          the key alias
-#   KEY_PASSWORD       the key password (often the same as KEYSTORE_PASSWORD)
-# Without them the APK is signed with a throwaway key made for that build, so installing a
+# Signing: release APKs are signed with signing/auxioplus-release.jks, whose password is read
+# from the KEYSTORE_PASSWORD repository secret (Settings > Secrets and variables > Actions), so
+# every build installs as an update over the previous one. Alternatively, a different keystore
+# can be supplied with the KEYSTORE_BASE64, KEYSTORE_PASSWORD, KEY_ALIAS and KEY_PASSWORD secrets.
+# Without a password the APK is signed with a throwaway key made for that build, so installing a
 # newer build means uninstalling the old one first.
 on:
   push:
@@ -120,8 +118,14 @@ jobs:
             store_pass="$KEYSTORE_PASSWORD"
             alias="$KEY_ALIAS"
             key_pass="${KEY_PASSWORD:-$KEYSTORE_PASSWORD}"
+          elif [ -n "$KEYSTORE_PASSWORD" ] && [ -f signing/auxioplus-release.jks ]; then
+            echo "Signing with the release key in signing/"
+            cp signing/auxioplus-release.jks "$keystore"
+            store_pass="$KEYSTORE_PASSWORD"
+            alias="${KEY_ALIAS:-auxioplus}"
+            key_pass="${KEY_PASSWORD:-$KEYSTORE_PASSWORD}"
           else
-            echo "::warning::No signing secrets set, signing with a throwaway key. Uninstall the old build before installing this one."
+            echo "::warning::KEYSTORE_PASSWORD secret not set, signing with a throwaway key. Uninstall the old build before installing this one."
             store_pass="throwaway"
             alias="throwaway"
             key_pass="throwaway"
