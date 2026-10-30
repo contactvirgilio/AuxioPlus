@@ -29,6 +29,8 @@
     <string name="set_key_auto_sort_names" translatable="false">auxio_auto_sort_names</string>
     <string name="set_key_locations_mode" translatable="false">auxio_locations_mode</string>
     <string name="set_key_export_playlists" translatable="false">auxio_export_playlists</string>
+    <string name="set_key_visualizer_mode" translatable="false">auxio_visualizer_mode</string>
+    <string name="set_key_show_visualizer" translatable="false">auxio_show_visualizer</string>
     <string name="set_key_import_playlists" translatable="false">auxio_import_playlists</string>
 
     <string name="set_key_headset_autoplay" translatable="false">auxio_headset_autoplay</string>
@@ -83,6 +85,18 @@
         <item>@integer/theme_auto</item>
         <item>@integer/theme_light</item>
         <item>@integer/theme_dark</item>
+    </integer-array>
+
+    <string-array name="entries_visualizer_mode">
+        <item>@string/set_visualizer_mode_oscilloscope</item>
+        <item>@string/set_visualizer_mode_spectrogram</item>
+        <item>@string/set_visualizer_mode_spectrum</item>
+    </string-array>
+
+    <integer-array name="values_visualizer_mode">
+        <item>@integer/visualizer_mode_oscilloscope</item>
+        <item>@integer/visualizer_mode_spectrogram</item>
+        <item>@integer/visualizer_mode_spectrum</item>
     </integer-array>
 
     <string-array name="entries_cover_mode">
@@ -186,4 +200,8 @@
     <integer name="cover_mode_balanced">0xA11D</integer>
     <integer name="cover_mode_high_quality">0xA11E</integer>
     <integer name="cover_mode_as_is">0xA126</integer>
+
+    <integer name="visualizer_mode_oscilloscope">0xA140</integer>
+    <integer name="visualizer_mode_spectrogram">0xA141</integer>
+    <integer name="visualizer_mode_spectrum">0xA142</integer>
 </resources>

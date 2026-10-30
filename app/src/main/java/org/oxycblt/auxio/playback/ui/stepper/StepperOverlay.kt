@@ -136,7 +136,11 @@ class StepperOverlay(context: Context, attrs: AttributeSet?) :
     override fun onTouchEvent(event: MotionEvent): Boolean =
         gestureDetector.onTouchEvent(event) || super.onTouchEvent(event)
 
-    override fun onSingleTapConfirmed(e: MotionEvent) = false
+    override fun onSingleTapConfirmed(e: MotionEvent): Boolean {
+        // A single tap switches between the album cover and the visualizer.
+        uiSettings.showVisualizer = !uiSettings.showVisualizer
+        return true
+    }
 
     private fun enter(
         secondsView: SecondsView,

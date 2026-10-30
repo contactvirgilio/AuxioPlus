@@ -238,6 +238,10 @@
     <string name="set_black_mode">Black theme</string>
     <string name="set_black_mode_desc">Use a pure black dark theme</string>
     <string name="set_round_mode">Round mode</string>
+    <string name="set_visualizer_mode">Visualizer</string>
+    <string name="set_visualizer_mode_oscilloscope">Oscilloscope</string>
+    <string name="set_visualizer_mode_spectrogram">Spectrogram</string>
+    <string name="set_visualizer_mode_spectrum">Musical spectrum</string>
     <string name="set_round_mode_desc">Enable rounded corners on additional UI elements (requires album covers to be rounded)</string>
 
     <string name="set_personalize">Personalize</string>

@@ -25,6 +25,7 @@ import androidx.core.content.edit
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import org.oxycblt.auxio.R
+import org.oxycblt.auxio.playback.visualizer.VisualizerMode
 import org.oxycblt.auxio.settings.Settings
 import org.oxycblt.auxio.ui.accent.Accent
 import timber.log.Timber as L
@@ -43,10 +44,17 @@ interface UISettings : Settings<UISettings.Listener> {
     var accent: Accent
     /** Whether to round additional UI elements that require album covers to be rounded. */
     val roundMode: Boolean
+    /** Whether Now Playing shows the visualizer instead of the album cover. */
+    var showVisualizer: Boolean
+    /** The style of visualizer to show. */
+    val visualizerMode: VisualizerMode
 
     interface Listener {
         /** Called when [roundMode] changes. */
-        fun onRoundModeChanged()
+        fun onRoundModeChanged() {}
+
+        /** Called when [showVisualizer] or [visualizerMode] changes. */
+        fun onVisualizerChanged() {}
     }
 }
 
@@ -77,6 +85,21 @@ class UISettingsImpl @Inject constructor(@ApplicationContext context: Context) :
     override val roundMode: Boolean
         get() = sharedPreferences.getBoolean(getString(R.string.set_key_round_mode), true)
 
+    override var showVisualizer: Boolean
+        get() = sharedPreferences.getBoolean(getString(R.string.set_key_show_visualizer), false)
+        set(value) {
+            sharedPreferences.edit {
+                putBoolean(getString(R.string.set_key_show_visualizer), value)
+                apply()
+            }
+        }
+
+    override val visualizerMode: VisualizerMode
+        get() =
+            VisualizerMode.fromIntCode(
+                sharedPreferences.getInt(getString(R.string.set_key_visualizer_mode), Int.MIN_VALUE)
+            ) ?: VisualizerMode.SPECTRUM
+
     override fun migrate() {
         if (sharedPreferences.contains(OLD_KEY_ACCENT3)) {
             L.d("Migrating $OLD_KEY_ACCENT3")
@@ -101,6 +124,13 @@ class UISettingsImpl @Inject constructor(@ApplicationContext context: Context) :
         if (key == getString(R.string.set_key_round_mode)) {
             L.d("Dispatching round mode setting change")
             listener.onRoundModeChanged()
+        }
+        if (
+            key == getString(R.string.set_key_show_visualizer) ||
+                key == getString(R.string.set_key_visualizer_mode)
+        ) {
+            L.d("Dispatching visualizer setting change")
+            listener.onVisualizerChanged()
         }
     }
 

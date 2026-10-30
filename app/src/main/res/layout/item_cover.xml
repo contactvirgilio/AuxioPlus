@@ -23,6 +23,16 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent"/>
 
+        <org.oxycblt.auxio.playback.visualizer.VisualizerView
+            android:id="@+id/cover_visualizer"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:importantForAccessibility="no"
+            app:layout_constraintBottom_toBottomOf="@+id/cover"
+            app:layout_constraintEnd_toEndOf="@+id/cover"
+            app:layout_constraintStart_toStartOf="@+id/cover"
+            app:layout_constraintTop_toTopOf="@+id/cover" />
+
         <org.oxycblt.auxio.playback.ui.stepper.StepperOverlay
             android:id="@+id/cover_fast_seek_overlay"
             style="@style/Widget.Auxio.Image.Full"
