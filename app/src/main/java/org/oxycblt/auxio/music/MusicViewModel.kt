@@ -611,7 +611,7 @@ sealed interface PlaylistBackupState {
 
     enum class Operation {
         EXPORT,
-        IMPORT
+        IMPORT,
     }
 }
 

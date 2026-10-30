@@ -109,7 +109,10 @@ constructor(
                     progressBar.setProgressCompat((fraction * progressBar.max).toInt(), true)
                     countView.text =
                         context.getString(
-                            R.string.fmt_playlist_progress, current.done, current.total)
+                            R.string.fmt_playlist_progress,
+                            current.done,
+                            current.total,
+                        )
                     percentView.text = NumberFormat.getPercentInstance().format(fraction)
                 } else {
                     countView.text = null

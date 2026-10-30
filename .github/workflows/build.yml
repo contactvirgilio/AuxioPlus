@@ -83,6 +83,10 @@ jobs:
 
       - name: Build release APK
         run: |
+          # The pinned media library references a consumer ProGuard file it doesn't ship,
+          # which only breaks release builds. An empty one is equivalent.
+          f=media/libraries/common_ktx/proguard-rules.txt
+          [ -f "$f" ] || touch "$f"
           set -o pipefail
           if ! ./gradlew assembleRelease 2>&1 | tee "$RUNNER_TEMP/build.log"; then
             # Surface the errors as annotations so they show on the run summary page.
