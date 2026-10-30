@@ -40,9 +40,9 @@ import org.oxycblt.auxio.ui.UISettings
 import org.oxycblt.auxio.util.getAttrColorCompat
 
 /**
- * Draws the audio that is currently playing as an oscilloscope, a spectrogram or a bar spectrum,
- * in place of the album cover. It shows and hides itself according to [UISettings.showVisualizer],
- * and only does any work while it is actually on screen.
+ * Draws the audio that is currently playing as an oscilloscope, a spectrogram or a bar spectrum, in
+ * place of the album cover. It shows and hides itself according to [UISettings.showVisualizer], and
+ * only does any work while it is actually on screen.
  */
 @AndroidEntryPoint
 class VisualizerView
@@ -333,11 +333,7 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
         if (width == 0 || height == 0) return null
         // Half resolution is plenty and keeps the per-frame work small.
         val bitmap =
-            Bitmap.createBitmap(
-                max(1, width / 2),
-                max(1, height / 2),
-                Bitmap.Config.ARGB_8888,
-            )
+            Bitmap.createBitmap(max(1, width / 2), max(1, height / 2), Bitmap.Config.ARGB_8888)
         bitmap.eraseColor(backgroundColor)
         spectrogram = bitmap
         spectrogramColumn = IntArray(bitmap.height)
