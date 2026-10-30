@@ -1,0 +1,145 @@
+name: Build AuxioPlus APK
+
+# Builds a downloadable APK on every push and when run by hand from the Actions tab.
+# Publishing a GitHub Release (e.g. tag v1.0) builds the APK and attaches it to that release.
+#
+# Signing: add these repository secrets (Settings > Secrets and variables > Actions) so every
+# build is signed with the same key and installs as an update over the previous one:
+#   KEYSTORE_BASE64    the keystore file, base64-encoded (base64 -w0 my.jks)
+#   KEYSTORE_PASSWORD  the keystore password
+#   KEY_ALIAS          the key alias
+#   KEY_PASSWORD       the key password (often the same as KEYSTORE_PASSWORD)
+# Without them the APK is signed with a throwaway key made for that build, so installing a
+# newer build means uninstalling the old one first.
+on:
+  push:
+  pull_request:
+  release:
+    types: [ published ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build release APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: gradle
+
+      - name: Install native build tools
+        run: sudo apt-get update && sudo apt-get install -y cmake ninja-build
+
+
+      - name: Install NDK and CMake
+        run: |
+          set -e
+          sdk="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-$HOME/android-sdk}}"
+          sdkmanager="$(ls "$sdk"/cmdline-tools/*/bin/sdkmanager 2>/dev/null | sort -V | tail -1 || true)"
+          if [ -z "$sdkmanager" ]; then
+            echo "::notice::No Android SDK command-line tools found in $sdk, downloading them"
+            mkdir -p "$sdk/cmdline-tools"
+            curl -sSfL -o "$RUNNER_TEMP/cmdline-tools.zip" \
+              https://dl.google.com/android/repository/commandlinetools-linux-13114758_latest.zip
+            unzip -q "$RUNNER_TEMP/cmdline-tools.zip" -d "$RUNNER_TEMP/cmdline-tools"
+            rm -rf "$sdk/cmdline-tools/latest"
+            mv "$RUNNER_TEMP/cmdline-tools/cmdline-tools" "$sdk/cmdline-tools/latest"
+            sdkmanager="$sdk/cmdline-tools/latest/bin/sdkmanager"
+          fi
+          echo "ANDROID_HOME=$sdk" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=$sdk" >> "$GITHUB_ENV"
+          ndk_version="$(grep -oE 'ndk_version *= *"[^"]+"' build.gradle | sed -E 's/.*"(.*)"/\1/')"
+          yes | "$sdkmanager" --sdk_root="$sdk" --licenses > /dev/null || true
+          if ! "$sdkmanager" --sdk_root="$sdk" "ndk;$ndk_version" "cmake;3.22.1" "build-tools;36.0.0" "platforms;android-36" > "$RUNNER_TEMP/sdk.log" 2>&1; then
+            tail -20 "$RUNNER_TEMP/sdk.log" | while IFS= read -r line; do echo "::error::$line"; done
+            exit 1
+          fi
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Report formatting issues
+        continue-on-error: true
+        run: |
+          ./gradlew spotlessApply -q
+          git diff --stat
+          git diff -U0 | grep -E "^(\+\+\+|[-+][^-+])" | head -60 \
+            | while IFS= read -r line; do echo "::warning::spotless $line"; done
+
+      - name: Build release APK
+        run: |
+          set -o pipefail
+          if ! ./gradlew assembleRelease 2>&1 | tee "$RUNNER_TEMP/build.log"; then
+            # Surface the errors as annotations so they show on the run summary page.
+            grep -E "^e: |error:|What went wrong" -A3 "$RUNNER_TEMP/build.log" | head -40 \
+              | while IFS= read -r line; do echo "::error::$line"; done
+            exit 1
+          fi
+
+      - name: Sign the APK
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          set -e
+          keystore="$RUNNER_TEMP/release.jks"
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "Signing with the release key from repository secrets"
+            echo "$KEYSTORE_BASE64" | base64 -d > "$keystore"
+            store_pass="$KEYSTORE_PASSWORD"
+            alias="$KEY_ALIAS"
+            key_pass="${KEY_PASSWORD:-$KEYSTORE_PASSWORD}"
+          else
+            echo "::warning::No signing secrets set, signing with a throwaway key. Uninstall the old build before installing this one."
+            store_pass="throwaway"
+            alias="throwaway"
+            key_pass="throwaway"
+            keytool -genkeypair -v -keystore "$keystore" -storepass "$store_pass" \
+              -keypass "$key_pass" -alias "$alias" -keyalg RSA -keysize 2048 -validity 10000 \
+              -dname "CN=Auxio CI"
+          fi
+
+          build_tools="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)"
+          unsigned="$(ls app/build/outputs/apk/release/*-unsigned.apk | head -1)"
+          version="$(grep -m1 'versionName' app/build.gradle | sed -E 's/.*"(.*)".*/\1/')"
+          mkdir -p dist
+          out="dist/AuxioPlus-${version}-${GITHUB_REF_NAME//\//-}.apk"
+
+          "$build_tools/zipalign" -f -p 4 "$unsigned" "$RUNNER_TEMP/aligned.apk"
+          "$build_tools/apksigner" sign --ks "$keystore" --ks-pass "pass:$store_pass" \
+            --ks-key-alias "$alias" --key-pass "pass:$key_pass" \
+            --out "$out" "$RUNNER_TEMP/aligned.apk"
+          "$build_tools/apksigner" verify "$out"
+          rm -f "$keystore"
+          ls -l dist
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: auxioplus-apk
+          path: dist/*.apk
+          if-no-files-found: error
+
+      - name: Publish GitHub Release
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.release.tag_name }}
+          files: dist/*.apk
