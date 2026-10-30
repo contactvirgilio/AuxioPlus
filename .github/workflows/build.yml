@@ -32,8 +32,18 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-        with:
-          submodules: recursive
+
+      - name: Fetch submodules
+        run: |
+          # git.ffmpeg.org is often unreachable from CI, so use FFmpeg's official GitHub mirror.
+          git config --global url."https://github.com/FFmpeg/FFmpeg.git".insteadOf \
+            "https://git.ffmpeg.org/ffmpeg.git"
+          for attempt in 1 2 3; do
+            git submodule update --init --recursive --depth 1 && break
+            echo "::warning::Submodule fetch failed (attempt $attempt), retrying"
+            sleep 15
+          done
+          git submodule status --recursive
 
       - name: Set up JDK 21
         uses: actions/setup-java@v4
