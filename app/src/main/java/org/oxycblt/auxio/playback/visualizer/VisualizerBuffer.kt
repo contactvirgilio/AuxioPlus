@@ -26,8 +26,8 @@ import javax.inject.Singleton
  * A ring buffer of the most recent audio sent to the audio output, mixed down to mono, that the
  * visualizer reads from.
  *
- * Audio reaches this buffer well before it is heard, since the audio output keeps its own buffer
- * of a few hundred milliseconds. [read] compensates for that so the visuals line up with what is
+ * Audio reaches this buffer well before it is heard, since the audio output keeps its own buffer of
+ * a few hundred milliseconds. [read] compensates for that so the visuals line up with what is
  * actually playing.
  */
 @Singleton

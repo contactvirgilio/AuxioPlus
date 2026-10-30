@@ -64,7 +64,8 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
 
     private val backgroundColor =
         context.getAttrColorCompat(MR.attr.colorSurfaceContainerHigh).defaultColor
-    private val primaryColor = context.getAttrColorCompat(MR.attr.colorPrimary).defaultColor
+    private val primaryColor =
+        context.getAttrColorCompat(androidx.appcompat.R.attr.colorPrimary).defaultColor
     private val accentColor = context.getAttrColorCompat(MR.attr.colorTertiary).defaultColor
     private val density = resources.displayMetrics.density
 

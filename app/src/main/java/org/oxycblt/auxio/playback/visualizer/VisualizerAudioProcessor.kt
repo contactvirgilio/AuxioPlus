@@ -32,8 +32,8 @@ import javax.inject.Inject
  * [VisualizerBuffer] for the visualizer to draw. It only does any work while a visualizer is
  * showing.
  *
- * Reading the audio here instead of through Android's Visualizer API means no microphone
- * permission is needed, and the visuals reflect exactly what is played (after ReplayGain).
+ * Reading the audio here instead of through Android's Visualizer API means no microphone permission
+ * is needed, and the visuals reflect exactly what is played (after ReplayGain).
  */
 class VisualizerAudioProcessor @Inject constructor(private val buffer: VisualizerBuffer) :
     BaseAudioProcessor() {
