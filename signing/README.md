@@ -1,11 +1,9 @@
 # Release signing key
 
 `auxioplus-release.jks` is the key every AuxioPlus release APK is signed with, so new builds
-install as updates over old ones.
+install as updates over old ones. Its password is in `keystore-password.txt`, which the build
+workflow reads (a `KEYSTORE_PASSWORD` repository secret, if set, takes priority).
 
-It is encrypted (PKCS#12, AES-256) with a long random password that is **not** in this repository.
-The build workflow reads that password from the `KEYSTORE_PASSWORD` repository secret
-(Settings > Secrets and variables > Actions). Without the password the file is useless.
-
-Keep a copy of the password somewhere safe: if it is lost, future builds can't be signed with this
-key and the app has to be uninstalled and reinstalled once with a new key.
+Because this repository is public, anyone can read both and sign their own APK that Android would
+accept as an update to AuxioPlus. Only install AuxioPlus APKs that come from this repository's
+Actions runs or releases.

@@ -41,9 +41,9 @@ import org.oxycblt.auxio.util.getAttrColorCompat
 
 /**
  * Draws the audio that is currently playing as a bar spectrum in place of the album cover, either
- * in the theme colour or with a three-colour gradient that fades between palettes on an interval.
- * It shows and hides itself according to [UISettings.showVisualizer], and only does any work while
- * it is actually on screen.
+ * in the theme colour or with a three-colour gradient that fades between palettes on an interval. It
+ * shows and hides itself according to [UISettings.showVisualizer], and only does any work while it
+ * is actually on screen.
  */
 @AndroidEntryPoint
 class VisualizerView
@@ -280,13 +280,29 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
         const val FADE_MS = 150L
         const val FADE_BETWEEN_PALETTES_MS = 1500L
 
-        /** Three colours each, bottom to top: Sunset, Ocean, Aurora and Ember. */
+        const val PALETTE_COUNT = 50
+
+        /** Step between palettes around the colour wheel, so neighbours are always far apart. */
+        const val GOLDEN_ANGLE = 137.508f
+
+        /**
+         * 50 palettes of three colours each, bottom to top. Each one starts from a different hue
+         * and sweeps around the colour wheel by a varying amount and direction, getting lighter
+         * towards the top.
+         */
         val PALETTES =
-            arrayOf(
-                intArrayOf(0xFFFF3D7F.toInt(), 0xFFFF8A3D.toInt(), 0xFFFFD23F.toInt()),
-                intArrayOf(0xFF1E3A8A.toInt(), 0xFF0EA5E9.toInt(), 0xFF5EEAD4.toInt()),
-                intArrayOf(0xFF7C3AED.toInt(), 0xFF14B8A6.toInt(), 0xFFA3E635.toInt()),
-                intArrayOf(0xFFB91C1C.toInt(), 0xFFF97316.toInt(), 0xFFFDE047.toInt()),
-            )
+            Array(PALETTE_COUNT) { i ->
+                val hue = i * GOLDEN_ANGLE
+                val sweep = (if (i % 2 == 0) 1f else -1f) * (30f + (i % 5) * 12f)
+                val saturation = 0.7f + (i % 3) * 0.1f
+                intArrayOf(
+                    hsl(hue, saturation, 0.42f),
+                    hsl(hue + sweep, saturation, 0.55f),
+                    hsl(hue + 2 * sweep, saturation, 0.68f),
+                )
+            }
+
+        private fun hsl(hue: Float, saturation: Float, lightness: Float) =
+            ColorUtils.HSLToColor(floatArrayOf(((hue % 360f) + 360f) % 360f, saturation, lightness))
     }
 }

@@ -3,12 +3,9 @@ name: Build AuxioPlus APK
 # Builds a downloadable APK on every push and when run by hand from the Actions tab.
 # Publishing a GitHub Release (e.g. tag v1.0) builds the APK and attaches it to that release.
 #
-# Signing: release APKs are signed with signing/auxioplus-release.jks, whose password is read
-# from the KEYSTORE_PASSWORD repository secret (Settings > Secrets and variables > Actions), so
-# every build installs as an update over the previous one. Alternatively, a different keystore
-# can be supplied with the KEYSTORE_BASE64, KEYSTORE_PASSWORD, KEY_ALIAS and KEY_PASSWORD secrets.
-# Without a password the APK is signed with a throwaway key made for that build, so installing a
-# newer build means uninstalling the old one first.
+# Signing: release APKs are signed with signing/auxioplus-release.jks, so every build installs as
+# an update over the previous one. Its password is read from the KEYSTORE_PASSWORD repository
+# secret if set, otherwise from signing/keystore-password.txt.
 on:
   push:
   pull_request:
@@ -118,12 +115,13 @@ jobs:
             store_pass="$KEYSTORE_PASSWORD"
             alias="$KEY_ALIAS"
             key_pass="${KEY_PASSWORD:-$KEYSTORE_PASSWORD}"
-          elif [ -n "$KEYSTORE_PASSWORD" ] && [ -f signing/auxioplus-release.jks ]; then
+          elif [ -f signing/auxioplus-release.jks ] && \
+            { [ -n "$KEYSTORE_PASSWORD" ] || [ -f signing/keystore-password.txt ]; }; then
             echo "Signing with the release key in signing/"
             cp signing/auxioplus-release.jks "$keystore"
-            store_pass="$KEYSTORE_PASSWORD"
+            store_pass="${KEYSTORE_PASSWORD:-$(cat signing/keystore-password.txt)}"
             alias="${KEY_ALIAS:-auxioplus}"
-            key_pass="${KEY_PASSWORD:-$KEYSTORE_PASSWORD}"
+            key_pass="${KEY_PASSWORD:-$store_pass}"
           else
             echo "::warning::KEYSTORE_PASSWORD secret not set, signing with a throwaway key. Uninstall the old build before installing this one."
             store_pass="throwaway"
