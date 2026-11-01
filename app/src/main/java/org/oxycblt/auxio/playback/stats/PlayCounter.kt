@@ -36,8 +36,8 @@ import org.oxycblt.musikr.Song
 
 /**
  * Watches playback and counts a play once a song has actually been listened to for half of its
- * length or four minutes, whichever comes first. Skipping or seeking past a song doesn't count,
- * and listening to it again (including on repeat) counts again.
+ * length or four minutes, whichever comes first. Skipping or seeking past a song doesn't count, and
+ * listening to it again (including on repeat) counts again.
  */
 class PlayCounter
 @Inject

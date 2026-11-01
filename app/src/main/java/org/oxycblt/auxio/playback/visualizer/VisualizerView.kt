@@ -222,15 +222,7 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
                 updateCycleColors()
                 // One gradient over the full height, so only loud bars reach the top colour.
                 barPaint.shader =
-                    LinearGradient(
-                        0f,
-                        h,
-                        0f,
-                        0f,
-                        cycleColors,
-                        gradientStops,
-                        Shader.TileMode.CLAMP,
-                    )
+                    LinearGradient(0f, h, 0f, 0f, cycleColors, gradientStops, Shader.TileMode.CLAMP)
                 peakPaint.color = cycleColors[2]
             }
         }
