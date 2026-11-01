@@ -153,10 +153,10 @@ object IntegerTable {
     const val FILTER_MODE_INCLUDE = 0xA129
     /** LocationMode.FileSystem */
     const val FILTER_MODE_EXCLUDE = 0xA12A
-    /** VisualizerMode.OSCILLOSCOPE */
-    const val VISUALIZER_MODE_OSCILLOSCOPE = 0xA140
-    /** VisualizerMode.SPECTROGRAM */
-    const val VISUALIZER_MODE_SPECTROGRAM = 0xA141
     /** VisualizerMode.SPECTRUM */
     const val VISUALIZER_MODE_SPECTRUM = 0xA142
+    /** VisualizerMode.SPECTRUM_CYCLE */
+    const val VISUALIZER_MODE_SPECTRUM_CYCLE = 0xA143
+    /** MusicType.TOP */
+    const val MUSIC_MODE_TOP = 0xA144
 }

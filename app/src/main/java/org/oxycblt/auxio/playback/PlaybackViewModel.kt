@@ -419,6 +419,17 @@ constructor(
     }
 
     /**
+     * Play a [Song] with the given list of [Song]s as the queue, in that order.
+     *
+     * @param song The [Song] to play. Must be in [songs].
+     * @param songs The [Song]s to play.
+     */
+    fun playFromList(song: Song, songs: List<Song>) {
+        L.d("Playing $song from a list of ${songs.size} songs")
+        playImpl(commandFactory.songFromList(song, songs, ShuffleMode.IMPLICIT))
+    }
+
+    /**
      * Shuffle a list of [Song]s.
      *
      * @param songs The [Song]s to shuffle.

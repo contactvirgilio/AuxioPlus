@@ -22,22 +22,18 @@ import org.oxycblt.auxio.IntegerTable
 
 /** The styles of visualizer that can be shown in place of the album cover. */
 enum class VisualizerMode {
-    /** The waveform itself, like an oscilloscope. */
-    OSCILLOSCOPE,
+    /** Bouncing bars for each frequency band in the theme colour, like foobar2000's spectrum. */
+    SPECTRUM,
 
-    /** A scrolling waterfall of loudness per frequency over time. */
-    SPECTROGRAM,
-
-    /** Bouncing bars for each frequency band, like foobar2000's spectrum. */
-    SPECTRUM;
+    /** The same bars filled with a three-colour gradient that fades between palettes. */
+    SPECTRUM_CYCLE;
 
     /** The integer representation of this instance, as stored in settings. */
     val intCode: Int
         get() =
             when (this) {
-                OSCILLOSCOPE -> IntegerTable.VISUALIZER_MODE_OSCILLOSCOPE
-                SPECTROGRAM -> IntegerTable.VISUALIZER_MODE_SPECTROGRAM
                 SPECTRUM -> IntegerTable.VISUALIZER_MODE_SPECTRUM
+                SPECTRUM_CYCLE -> IntegerTable.VISUALIZER_MODE_SPECTRUM_CYCLE
             }
 
     companion object {
@@ -49,9 +45,8 @@ enum class VisualizerMode {
          */
         fun fromIntCode(intCode: Int) =
             when (intCode) {
-                IntegerTable.VISUALIZER_MODE_OSCILLOSCOPE -> OSCILLOSCOPE
-                IntegerTable.VISUALIZER_MODE_SPECTROGRAM -> SPECTROGRAM
                 IntegerTable.VISUALIZER_MODE_SPECTRUM -> SPECTRUM
+                IntegerTable.VISUALIZER_MODE_SPECTRUM_CYCLE -> SPECTRUM_CYCLE
                 else -> null
             }
     }

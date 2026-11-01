@@ -31,6 +31,7 @@
     <string name="set_key_export_playlists" translatable="false">auxio_export_playlists</string>
     <string name="set_key_visualizer_mode" translatable="false">auxio_visualizer_mode</string>
     <string name="set_key_show_visualizer" translatable="false">auxio_show_visualizer</string>
+    <string name="set_key_visualizer_interval" translatable="false">auxio_visualizer_interval</string>
     <string name="set_key_import_playlists" translatable="false">auxio_import_playlists</string>
 
     <string name="set_key_headset_autoplay" translatable="false">auxio_headset_autoplay</string>
@@ -88,15 +89,29 @@
     </integer-array>
 
     <string-array name="entries_visualizer_mode">
-        <item>@string/set_visualizer_mode_oscilloscope</item>
-        <item>@string/set_visualizer_mode_spectrogram</item>
         <item>@string/set_visualizer_mode_spectrum</item>
+        <item>@string/set_visualizer_mode_spectrum_cycle</item>
     </string-array>
 
     <integer-array name="values_visualizer_mode">
-        <item>@integer/visualizer_mode_oscilloscope</item>
-        <item>@integer/visualizer_mode_spectrogram</item>
         <item>@integer/visualizer_mode_spectrum</item>
+        <item>@integer/visualizer_mode_spectrum_cycle</item>
+    </integer-array>
+
+    <string-array name="entries_visualizer_interval">
+        <item>@string/set_visualizer_interval_5</item>
+        <item>@string/set_visualizer_interval_10</item>
+        <item>@string/set_visualizer_interval_20</item>
+        <item>@string/set_visualizer_interval_30</item>
+        <item>@string/set_visualizer_interval_60</item>
+    </string-array>
+
+    <integer-array name="values_visualizer_interval">
+        <item>5</item>
+        <item>10</item>
+        <item>20</item>
+        <item>30</item>
+        <item>60</item>
     </integer-array>
 
     <string-array name="entries_cover_mode">
@@ -201,7 +216,6 @@
     <integer name="cover_mode_high_quality">0xA11E</integer>
     <integer name="cover_mode_as_is">0xA126</integer>
 
-    <integer name="visualizer_mode_oscilloscope">0xA140</integer>
-    <integer name="visualizer_mode_spectrogram">0xA141</integer>
     <integer name="visualizer_mode_spectrum">0xA142</integer>
+    <integer name="visualizer_mode_spectrum_cycle">0xA143</integer>
 </resources>

@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:animateLayoutChanges="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/top_since"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingStart="@dimen/spacing_medium"
+            android:paddingTop="@dimen/spacing_mid_medium"
+            android:paddingEnd="@dimen/spacing_medium"
+            android:paddingBottom="@dimen/spacing_tiny"
+            android:textAlignment="viewStart"
+            android:textAppearance="?attr/textAppearanceBodyMedium"
+            android:textColor="?attr/colorOnSurfaceVariant"
+            tools:text="Most played since 30 Oct 2026" />
+
+        <org.oxycblt.auxio.list.recycler.FastScrollRecyclerView
+            android:id="@+id/top_recycler"
+            style="@style/Widget.Auxio.RecyclerView.Grid.WithAdaptiveFab"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            tools:listitem="@layout/item_top_song" />
+
+    </LinearLayout>
+
+    <org.oxycblt.auxio.ui.EdgeFrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <LinearLayout
+            android:id="@+id/top_empty"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:gravity="center_horizontal"
+            android:orientation="vertical"
+            android:padding="@dimen/spacing_medium"
+            android:visibility="invisible">
+
+            <org.oxycblt.auxio.home.list.CookieImageView
+                android:layout_width="@dimen/size_fast_scroll_popup"
+                android:layout_height="@dimen/size_fast_scroll_popup"
+                android:layout_marginBottom="@dimen/spacing_small"
+                android:backgroundTint="?attr/colorSurfaceVariant"
+                android:src="@drawable/ic_song_48"
+                app:tint="?attr/colorOnSurfaceVariant"
+                tools:ignore="ContentDescription" />
+
+            <TextView
+                android:layout_width="256dp"
+                android:layout_height="wrap_content"
+                android:text="@string/lng_empty_top"
+                android:textAlignment="center"
+                android:textAppearance="?attr/textAppearanceBodyLarge" />
+
+        </LinearLayout>
+
+    </org.oxycblt.auxio.ui.EdgeFrameLayout>
+
+</FrameLayout>

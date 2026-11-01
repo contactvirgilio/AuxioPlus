@@ -117,6 +117,7 @@ class TabViewHolder private constructor(private val binding: ItemTabBinding) :
                     MusicType.ARTISTS -> R.string.lbl_artists
                     MusicType.GENRES -> R.string.lbl_genres
                     MusicType.PLAYLISTS -> R.string.lbl_playlists
+                    MusicType.TOP -> R.string.lbl_top_50
                 }
             )
 

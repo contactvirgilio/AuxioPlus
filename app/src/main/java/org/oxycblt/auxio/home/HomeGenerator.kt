@@ -24,6 +24,7 @@ import org.oxycblt.auxio.list.ListSettings
 import org.oxycblt.auxio.list.adapter.UpdateInstructions
 import org.oxycblt.auxio.music.MusicRepository
 import org.oxycblt.auxio.music.MusicType
+import org.oxycblt.auxio.playback.stats.PlayCountRepository
 import org.oxycblt.musikr.Album
 import org.oxycblt.musikr.Artist
 import org.oxycblt.musikr.Genre
@@ -48,6 +49,12 @@ interface HomeGenerator {
 
     fun playlists(): List<Playlist>
 
+    /** The most played songs that are in the library, most played first. */
+    fun top(): List<TopSong>
+
+    /** When play counting started, as unix time in milliseconds. */
+    fun topSinceMs(): Long
+
     fun tabs(): List<MusicType>
 
     interface Invalidator {
@@ -69,9 +76,16 @@ constructor(
     private val homeSettings: HomeSettings,
     private val listSettings: ListSettings,
     private val musicRepository: MusicRepository,
+    private val playCountRepository: PlayCountRepository,
 ) : HomeGenerator.Factory {
     override fun create(invalidator: HomeGenerator.Invalidator): HomeGenerator =
-        HomeGeneratorImpl(invalidator, homeSettings, listSettings, musicRepository)
+        HomeGeneratorImpl(
+            invalidator,
+            homeSettings,
+            listSettings,
+            musicRepository,
+            playCountRepository,
+        )
 }
 
 private class HomeGeneratorImpl(
@@ -79,11 +93,22 @@ private class HomeGeneratorImpl(
     private val homeSettings: HomeSettings,
     private val listSettings: ListSettings,
     private val musicRepository: MusicRepository,
-) : HomeGenerator, HomeSettings.Listener, ListSettings.Listener, MusicRepository.UpdateListener {
+    private val playCountRepository: PlayCountRepository,
+) :
+    HomeGenerator,
+    HomeSettings.Listener,
+    ListSettings.Listener,
+    MusicRepository.UpdateListener,
+    PlayCountRepository.Listener {
     override fun attach() {
         homeSettings.registerListener(this)
         listSettings.registerListener(this)
         musicRepository.addUpdateListener(this)
+        playCountRepository.addListener(this)
+    }
+
+    override fun onPlayCountsChanged() {
+        invalidator.invalidateMusic(MusicType.TOP, UpdateInstructions.Diff)
     }
 
     override fun onTabsChanged() {
@@ -134,6 +159,7 @@ private class HomeGeneratorImpl(
             invalidator.invalidateMusic(MusicType.ALBUMS, UpdateInstructions.Diff)
             invalidator.invalidateMusic(MusicType.ARTISTS, UpdateInstructions.Diff)
             invalidator.invalidateMusic(MusicType.GENRES, UpdateInstructions.Diff)
+            invalidator.invalidateMusic(MusicType.TOP, UpdateInstructions.Diff)
         }
 
         if (changes.userLibrary && library != null) {
@@ -143,6 +169,7 @@ private class HomeGeneratorImpl(
     }
 
     override fun release() {
+        playCountRepository.removeListener(this)
         musicRepository.removeUpdateListener(this)
         listSettings.unregisterListener(this)
         homeSettings.unregisterListener(this)
@@ -173,5 +200,28 @@ private class HomeGeneratorImpl(
         musicRepository.library?.let { listSettings.playlistSort.playlists(it.playlists) }
             ?: emptyList()
 
+    override fun top(): List<TopSong> {
+        val library = musicRepository.library ?: return emptyList()
+        // Songs that are no longer in the library are skipped, so ask for some spare entries.
+        return playCountRepository
+            .top(TOP_LIMIT * 2)
+            .mapNotNull { (uid, entry) -> library.findSong(uid)?.let { it to entry.count } }
+            .take(TOP_LIMIT)
+            .mapIndexed { i, (song, plays) -> TopSong(song, i + 1, plays) }
+    }
+
+    override fun topSinceMs() = playCountRepository.sinceMs
+
     override fun tabs() = homeSettings.homeTabs.filterIsInstance<Tab.Visible>().map { it.type }
 }
+
+/**
+ * A song in the Top 50 tab.
+ *
+ * @param song The song.
+ * @param rank Its place in the list, starting at 1.
+ * @param plays How many times it has been played.
+ */
+data class TopSong(val song: Song, val rank: Int, val plays: Int)
+
+private const val TOP_LIMIT = 50

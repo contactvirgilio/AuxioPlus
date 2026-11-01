@@ -47,7 +47,7 @@ sealed class Tab(open val type: MusicType) {
         // cannot be serialized on their own. Instead, they are saved as a sequence of tabs as shown
         // below:
         //
-        // 0bTAB1_TAB2_TAB3_TAB4_TAB5
+        // 0bTAB1_TAB2_TAB3_TAB4_TAB5_TAB6
         //
         // Where TABN is a chunk representing a tab at position N.
         // Each chunk in a sequence is represented as:
@@ -56,15 +56,24 @@ sealed class Tab(open val type: MusicType) {
         //
         // Where V is a bit representing the visibility and T is a 3-bit integer representing the
         // MusicMode for this tab.
+        //
+        // Sequences with six tabs (since the Top 50 tab) are marked with SEQUENCE_SIX_TABS. Older
+        // sequences have five tabs and are read as such, with the Top 50 tab added hidden.
 
         /** The maximum index that a well-formed tab sequence should be. */
-        const val MAX_SEQUENCE_IDX = 4
+        const val MAX_SEQUENCE_IDX = 5
+
+        /** The maximum index of a sequence saved before the Top 50 tab existed. */
+        private const val LEGACY_MAX_SEQUENCE_IDX = 4
+
+        /** Marks a sequence as holding six tabs rather than the original five. */
+        private const val SEQUENCE_SIX_TABS = 1 shl 28
 
         /**
-         * The default tab sequence, in integer form. This represents a set of four visible tabs
-         * ordered as "Song", "Album", "Artist", "Genre", and "Playlists
+         * The default tab sequence, in integer form. This represents a set of five visible tabs
+         * ordered as "Song", "Album", "Artist", "Genre", and "Playlists", then a hidden "Top 50".
          */
-        const val SEQUENCE_DEFAULT = 0b1000_1001_1010_1011_1100
+        const val SEQUENCE_DEFAULT = SEQUENCE_SIX_TABS or 0b1000_1001_1010_1011_1100_0101
 
         /** Maps between the integer code in the tab sequence and it's [MusicType]. */
         private val MODE_TABLE =
@@ -74,6 +83,7 @@ sealed class Tab(open val type: MusicType) {
                 MusicType.ARTISTS,
                 MusicType.GENRES,
                 MusicType.PLAYLISTS,
+                MusicType.TOP,
             )
 
         /**
@@ -91,9 +101,9 @@ sealed class Tab(open val type: MusicType) {
                 )
             }
 
-            var sequence = 0
+            var sequence = SEQUENCE_SIX_TABS
             var shift = MAX_SEQUENCE_IDX * 4
-            for (tab in distinct) {
+            for (tab in distinct.take(MAX_SEQUENCE_IDX + 1)) {
                 val bin =
                     when (tab) {
                         is Visible -> 1.shl(3) or MODE_TABLE.indexOf(tab.type)
@@ -115,10 +125,13 @@ sealed class Tab(open val type: MusicType) {
          */
         fun fromIntCode(intCode: Int): Array<Tab>? {
             val tabs = mutableListOf<Tab>()
+            val maxIdx =
+                if (intCode and SEQUENCE_SIX_TABS != 0) MAX_SEQUENCE_IDX
+                else LEGACY_MAX_SEQUENCE_IDX
 
             // Try to parse a mode for each chunk in the sequence.
             // If we can't parse one, just skip it.
-            for (shift in (0..MAX_SEQUENCE_IDX * 4).reversed() step 4) {
+            for (shift in (0..maxIdx * 4).reversed() step 4) {
                 val chunk = intCode.shr(shift) and 0b1111
                 val mode = MODE_TABLE.getOrNull(chunk and 7) ?: continue
 
@@ -132,17 +145,24 @@ sealed class Tab(open val type: MusicType) {
             }
 
             // Make sure there are no duplicate tabs
-            val distinct = tabs.distinctBy { it.type }
+            val distinct = tabs.distinctBy { it.type }.toMutableList()
             if (tabs.size != distinct.size) {
                 L.w(
                     "Tab sequences should not have duplicates [old: ${tabs.size} new: ${distinct.size}]"
                 )
             }
 
-            // For safety, return null if we have an empty or larger-than-expected tab array.
-            if (distinct.isEmpty() || distinct.size < MAX_SEQUENCE_IDX) {
-                L.e("Sequence size was ${distinct.size}, which is invalid")
+            // For safety, return null if we have an empty tab array.
+            if (distinct.isEmpty()) {
+                L.e("Sequence was empty, which is invalid")
                 return null
+            }
+
+            // Tabs that didn't exist when the sequence was saved are added at the end, hidden.
+            for (mode in MODE_TABLE) {
+                if (distinct.none { it.type == mode }) {
+                    distinct.add(Invisible(mode))
+                }
             }
 
             return distinct.toTypedArray()

@@ -48,12 +48,14 @@ interface UISettings : Settings<UISettings.Listener> {
     var showVisualizer: Boolean
     /** The style of visualizer to show. */
     val visualizerMode: VisualizerMode
+    /** How many seconds the colour-cycling spectrum shows each palette for. */
+    val visualizerIntervalSeconds: Int
 
     interface Listener {
         /** Called when [roundMode] changes. */
         fun onRoundModeChanged() {}
 
-        /** Called when [showVisualizer] or [visualizerMode] changes. */
+        /** Called when any of the visualizer settings change. */
         fun onVisualizerChanged() {}
     }
 }
@@ -100,7 +102,23 @@ class UISettingsImpl @Inject constructor(@ApplicationContext context: Context) :
                 sharedPreferences.getInt(getString(R.string.set_key_visualizer_mode), Int.MIN_VALUE)
             ) ?: VisualizerMode.SPECTRUM
 
+    override val visualizerIntervalSeconds: Int
+        get() =
+            sharedPreferences
+                .getInt(getString(R.string.set_key_visualizer_interval), 10)
+                .coerceIn(1, 3600)
+
     override fun migrate() {
+        // The oscilloscope and spectrogram visualizers were removed, fall back to the default.
+        val visualizerKey = getString(R.string.set_key_visualizer_mode)
+        if (
+            sharedPreferences.contains(visualizerKey) &&
+                VisualizerMode.fromIntCode(sharedPreferences.getInt(visualizerKey, 0)) == null
+        ) {
+            L.d("Resetting removed visualizer mode")
+            sharedPreferences.edit { remove(visualizerKey) }
+        }
+
         if (sharedPreferences.contains(OLD_KEY_ACCENT3)) {
             L.d("Migrating $OLD_KEY_ACCENT3")
 
@@ -127,7 +145,8 @@ class UISettingsImpl @Inject constructor(@ApplicationContext context: Context) :
         }
         if (
             key == getString(R.string.set_key_show_visualizer) ||
-                key == getString(R.string.set_key_visualizer_mode)
+                key == getString(R.string.set_key_visualizer_mode) ||
+                key == getString(R.string.set_key_visualizer_interval)
         ) {
             L.d("Dispatching visualizer setting change")
             listener.onVisualizerChanged()

@@ -213,7 +213,15 @@ class MainFragment :
 
         binding.mainScrim.setOnClickListener { binding.homeNewPlaylistFab.close() }
         binding.sheetScrim.setOnClickListener { binding.homeNewPlaylistFab.close() }
-        binding.homeShuffleFab.setOnClickListener { playbackModel.shuffleAll() }
+        binding.homeShuffleFab.setOnClickListener {
+            // On the Top 50 tab, shuffle just those songs.
+            val top = homeModel.topList.value
+            if (homeModel.currentTabType.value == MusicType.TOP && top.isNotEmpty()) {
+                playbackModel.shuffle(top.map { it.song })
+            } else {
+                playbackModel.shuffleAll()
+            }
+        }
         binding.homeNewPlaylistFab.apply {
             inflate(R.menu.new_playlist_actions)
             setOnActionSelectedListener(this@MainFragment)

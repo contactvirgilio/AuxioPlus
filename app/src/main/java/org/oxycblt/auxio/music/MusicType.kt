@@ -31,7 +31,10 @@ enum class MusicType {
     ALBUMS,
     ARTISTS,
     GENRES,
-    PLAYLISTS;
+    PLAYLISTS,
+
+    /** The most played songs. Only used as a home tab. */
+    TOP;
 
     /**
      * The integer representation of this instance.
@@ -46,6 +49,7 @@ enum class MusicType {
                 ARTISTS -> IntegerTable.MUSIC_MODE_ARTISTS
                 GENRES -> IntegerTable.MUSIC_MODE_GENRES
                 PLAYLISTS -> IntegerTable.MUSIC_MODE_PLAYLISTS
+                TOP -> IntegerTable.MUSIC_MODE_TOP
             }
 
     val nameRes: Int
@@ -56,6 +60,7 @@ enum class MusicType {
                 ARTISTS -> R.string.lbl_artists
                 GENRES -> R.string.lbl_genres
                 PLAYLISTS -> R.string.lbl_playlists
+                TOP -> R.string.lbl_top_50
             }
 
     companion object {
@@ -73,6 +78,7 @@ enum class MusicType {
                 IntegerTable.MUSIC_MODE_ARTISTS -> ARTISTS
                 IntegerTable.MUSIC_MODE_GENRES -> GENRES
                 IntegerTable.MUSIC_MODE_PLAYLISTS -> PLAYLISTS
+                IntegerTable.MUSIC_MODE_TOP -> TOP
                 else -> null
             }
     }

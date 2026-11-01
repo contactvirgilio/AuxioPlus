@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@drawable/ui_item_bg"
+    android:paddingStart="@dimen/spacing_small"
+    android:paddingTop="@dimen/spacing_mid_medium"
+    android:paddingEnd="@dimen/spacing_mid_medium"
+    android:paddingBottom="@dimen/spacing_mid_medium">
+
+    <TextView
+        android:id="@+id/top_rank"
+        android:layout_width="32dp"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:maxLines="1"
+        android:textAppearance="?attr/textAppearanceTitleMedium"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        tools:text="1" />
+
+    <org.oxycblt.auxio.image.CoverView
+        android:id="@+id/top_cover"
+        style="@style/Widget.Auxio.Image.Small"
+        android:layout_marginStart="@dimen/spacing_small"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toEndOf="@+id/top_rank"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <TextView
+        android:id="@+id/top_name"
+        style="@style/Widget.Auxio.TextView.Item.Primary"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="@dimen/spacing_mid_medium"
+        android:textColor="@color/sel_selectable_text_primary"
+        app:layout_constraintBottom_toTopOf="@+id/top_info"
+        app:layout_constraintEnd_toStartOf="@+id/top_menu"
+        app:layout_constraintStart_toEndOf="@+id/top_cover"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintVertical_chainStyle="packed"
+        tools:text="Song" />
+
+    <TextView
+        android:id="@+id/top_info"
+        style="@style/Widget.Auxio.TextView.Item.Secondary"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="@dimen/spacing_mid_medium"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toStartOf="@+id/top_menu"
+        app:layout_constraintStart_toEndOf="@+id/top_cover"
+        app:layout_constraintTop_toBottomOf="@+id/top_name"
+        tools:text="Artist · 128 plays" />
+
+    <org.oxycblt.auxio.ui.RippleFixMaterialButton
+        android:id="@+id/top_menu"
+        style="@style/Widget.Auxio.Button.Icon.Small"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:contentDescription="@string/lbl_more"
+        app:icon="@drawable/ic_more_24"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>

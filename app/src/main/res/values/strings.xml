@@ -87,6 +87,10 @@
     <string name="lbl_empty_playlist">Empty playlist</string>
     <string name="lbl_imported_playlist">Imported playlist</string>
     <string name="lbl_import_playlists">Import playlists</string>
+    <string name="lbl_top_50">Top 50</string>
+    <!-- As in "Most played since 30 Oct 2026" -->
+    <string name="fmt_top_since">Most played since %s</string>
+    <string name="lng_empty_top">No plays counted yet. A song counts once you\'ve listened to half of it, or 4 minutes.</string>
     <string name="lbl_import">Import</string>
     <string name="lbl_import_playlist">Import playlist</string>
     <string name="lbl_export">Export</string>
@@ -239,9 +243,14 @@
     <string name="set_black_mode_desc">Use a pure black dark theme</string>
     <string name="set_round_mode">Round mode</string>
     <string name="set_visualizer_mode">Visualizer</string>
-    <string name="set_visualizer_mode_oscilloscope">Oscilloscope</string>
-    <string name="set_visualizer_mode_spectrogram">Spectrogram</string>
     <string name="set_visualizer_mode_spectrum">Musical spectrum</string>
+    <string name="set_visualizer_mode_spectrum_cycle">Musical spectrum (colour cycle)</string>
+    <string name="set_visualizer_interval">Colour change interval</string>
+    <string name="set_visualizer_interval_5">Every 5 seconds</string>
+    <string name="set_visualizer_interval_10">Every 10 seconds</string>
+    <string name="set_visualizer_interval_20">Every 20 seconds</string>
+    <string name="set_visualizer_interval_30">Every 30 seconds</string>
+    <string name="set_visualizer_interval_60">Every minute</string>
     <string name="set_round_mode_desc">Enable rounded corners on additional UI elements (requires album covers to be rounded)</string>
 
     <string name="set_personalize">Personalize</string>
@@ -471,6 +480,8 @@
     <string name="fmt_def_playlist">Playlist %d</string>
     <!-- As in the progress of exporting or importing playlists, e.g "3 of 12" -->
     <string name="fmt_playlist_progress">%1$d of %2$d</string>
+    <!-- As in "Artist · 128 plays" -->
+    <string name="fmt_top_song_info">%1$s · %2$s</string>
     <!-- As in a task and how far along it is, e.g "Exporting playlists… 3 of 12" -->
     <string name="fmt_playlist_backup_status">%1$s %2$s</string>
 
@@ -512,5 +523,9 @@
     <plurals name="fmt_seconds">
         <item quantity="one">%d second</item>
         <item quantity="other">%d seconds</item>
+    </plurals>
+    <plurals name="fmt_play_count">
+        <item quantity="one">%d play</item>
+        <item quantity="other">%d plays</item>
     </plurals>
 </resources>

@@ -35,6 +35,7 @@ import org.oxycblt.auxio.playback.PlaybackSettings
 import org.oxycblt.auxio.playback.state.DeferredPlayback
 import org.oxycblt.auxio.playback.state.PlaybackStateManager
 import org.oxycblt.auxio.playback.state.Progression
+import org.oxycblt.auxio.playback.stats.PlayCounter
 import org.oxycblt.auxio.widgets.WidgetComponent
 import org.oxycblt.musikr.MusicParent
 import org.oxycblt.musikr.Song
@@ -46,6 +47,7 @@ private constructor(
     private val foregroundListener: ForegroundListener,
     private val playbackManager: PlaybackStateManager,
     private val playbackSettings: PlaybackSettings,
+    private val playCounter: PlayCounter,
     exoHolderFactory: ExoPlaybackStateHolder.Factory,
     sessionHolderFactory: MediaSessionHolder.Factory,
     widgetComponentFactory: WidgetComponent.Factory,
@@ -56,6 +58,7 @@ private constructor(
     constructor(
         private val playbackManager: PlaybackStateManager,
         private val playbackSettings: PlaybackSettings,
+        private val playCounter: PlayCounter,
         private val exoHolderFactory: ExoPlaybackStateHolder.Factory,
         private val sessionHolderFactory: MediaSessionHolder.Factory,
         private val widgetComponentFactory: WidgetComponent.Factory,
@@ -67,6 +70,7 @@ private constructor(
                 foregroundListener,
                 playbackManager,
                 playbackSettings,
+                playCounter,
                 exoHolderFactory,
                 sessionHolderFactory,
                 widgetComponentFactory,
@@ -120,6 +124,7 @@ private constructor(
         widgetComponent.attach()
         systemReceiver.attach()
         playbackManager.addListener(this)
+        playCounter.attach()
         updateAutoStopTimer(playbackManager.progression.isPlaying)
         return sessionHolder.token
     }
@@ -176,6 +181,7 @@ private constructor(
         autoStopJob?.cancel()
         waitJob.cancel()
         playbackManager.removeListener(this)
+        playCounter.release()
         systemReceiver.release()
         widgetComponent.release()
         sessionHolder.release()
