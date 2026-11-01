@@ -40,10 +40,9 @@ import org.oxycblt.auxio.ui.UISettings
 import org.oxycblt.auxio.util.getAttrColorCompat
 
 /**
- * Draws the audio that is currently playing as a bar spectrum in place of the album cover, either
- * in the theme colour or with a three-colour gradient that fades between palettes on an interval. It
- * shows and hides itself according to [UISettings.showVisualizer], and only does any work while it
- * is actually on screen.
+ * Draws the playing audio as a bar spectrum in place of the album cover, either in the theme colour
+ * or with a three-colour gradient that fades between palettes on an interval. It shows and hides
+ * itself according to [UISettings.showVisualizer], and only does any work while it is on screen.
  */
 @AndroidEntryPoint
 class VisualizerView
