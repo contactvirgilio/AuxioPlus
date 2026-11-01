@@ -253,8 +253,7 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
         val position = SystemClock.elapsedRealtime() % (interval * PALETTES.size)
         val index = (position / interval).toInt()
         val within = position - index * interval
-        val t =
-            if (within > interval - fade) (within - (interval - fade)).toFloat() / fade else 0f
+        val t = if (within > interval - fade) (within - (interval - fade)).toFloat() / fade else 0f
         val from = PALETTES[index]
         val to = PALETTES[(index + 1) % PALETTES.size]
         for (i in 0 until 3) {

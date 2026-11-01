@@ -143,6 +143,8 @@ jobs:
             --ks-key-alias "$alias" --key-pass "pass:$key_pass" \
             --out "$out" "$RUNNER_TEMP/aligned.apk"
           "$build_tools/apksigner" verify "$out"
+          # The v4 signature file is only for streaming installs over adb; don't ship it.
+          rm -f "$out.idsig"
           rm -f "$keystore"
           ls -l dist
 
