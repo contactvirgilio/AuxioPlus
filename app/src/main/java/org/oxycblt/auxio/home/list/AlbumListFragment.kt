@@ -71,7 +71,6 @@ class AlbumListFragment :
     override val musicModel: MusicViewModel by activityViewModels()
     override val playbackModel: PlaybackViewModel by activityViewModels()
     private val albumAdapter = AlbumAdapter(this)
-    private var tilesApplied: Boolean? = null
 
     override fun onCreateBinding(inflater: LayoutInflater) =
         FragmentHomeListBinding.inflate(inflater)
@@ -117,8 +116,6 @@ class AlbumListFragment :
         val tiles =
             PreferenceManager.getDefaultSharedPreferences(requireContext())
                 .getBoolean(getString(R.string.set_key_album_tiles), false)
-        if (tiles == tilesApplied) return
-        tilesApplied = tiles
         val density = resources.displayMetrics.density
         val columns =
             if (tiles) {
