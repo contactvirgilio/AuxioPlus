@@ -276,7 +276,12 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
      * jumps well away from the previous palette so that two in a row never look alike.
      */
     private fun randomPalette(into: IntArray) {
-        if (random.nextFloat() < RARE_CHANCE) {
+        val roll = random.nextFloat()
+        if (roll < WEIRD_CHANCE) {
+            WEIRD_PALETTES[random.nextInt(WEIRD_PALETTES.size)].copyInto(into)
+            return
+        }
+        if (roll < WEIRD_CHANCE + RARE_CHANCE) {
             RARE_PALETTES[random.nextInt(RARE_PALETTES.size)].copyInto(into)
             return
         }
@@ -338,10 +343,10 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
         /** How often a palette is one of the hand-picked [RARE_PALETTES]: about 1 in 1000. */
         const val RARE_CHANCE = 0.001f
 
-        /**
-         * Hand-picked palettes, bottom to top, that only turn up now and then. They don't follow
-         * the rules of the random ones: some are two-tone, some clash on purpose.
-         */
+        /** How often a palette is one of the [WEIRD_PALETTES]: about 1 in 5000. */
+        const val WEIRD_CHANCE = 0.0002f
+
+        /** Hand-picked palettes, bottom to top, that only turn up now and then. */
         val RARE_PALETTES =
             arrayOf(
                 // Sunset.
@@ -354,6 +359,14 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
                 intArrayOf(0xFF0B6E4F.toInt(), 0xFF08D9D6.toInt(), 0xFFB8F2E6.toInt()),
                 // Ember.
                 intArrayOf(0xFF1A0000.toInt(), 0xFFC1121F.toInt(), 0xFFFFB703.toInt()),
+            )
+
+        /**
+         * Even rarer palettes that break every rule of the random ones: two-tone, clashing, flat or
+         * faint on purpose.
+         */
+        val WEIRD_PALETTES =
+            arrayOf(
                 // Two-tone: hot pink with a lime tip.
                 intArrayOf(0xFFFF1493.toInt(), 0xFFFF1493.toInt(), 0xFFB6FF00.toInt()),
                 // Two-tone: blood red into ice.
@@ -366,6 +379,16 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
                 intArrayOf(0xFF303030.toInt(), 0xFF9E9E9E.toInt(), 0xFFFFFFFF.toInt()),
                 // Pastel sweets: bubblegum, mint, lemon.
                 intArrayOf(0xFFFFB3D9.toInt(), 0xFFB3FFE6.toInt(), 0xFFFFF7A8.toInt()),
+                // One flat colour.
+                intArrayOf(0xFFFF00FF.toInt(), 0xFFFF00FF.toInt(), 0xFFFF00FF.toInt()),
+                // Neon green and magenta, fighting.
+                intArrayOf(0xFF00FF00.toInt(), 0xFFFF00FF.toInt(), 0xFF00FF00.toInt()),
+                // Ghost: barely brighter than the background.
+                intArrayOf(0xFF1F1F1F.toInt(), 0xFF2E2E2E.toInt(), 0xFF3D3D3D.toInt()),
+                // Level meter: green, yellow, red.
+                intArrayOf(0xFF00C853.toInt(), 0xFFFFEA00.toInt(), 0xFFFF1744.toInt()),
+                // Trench: black, deep blue, white foam.
+                intArrayOf(0xFF000000.toInt(), 0xFF0D1B6B.toInt(), 0xFFFFFFFF.toInt()),
             )
 
         /** How often a palette is a dark, muted brown instead of a bright colour. */
