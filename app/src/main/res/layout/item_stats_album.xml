@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:padding="@dimen/spacing_mid_medium"
+    android:paddingStart="@dimen/spacing_medium"
+    android:paddingEnd="@dimen/spacing_medium">
+
+    <org.oxycblt.auxio.image.CoverView
+        android:id="@+id/stats_cover"
+        style="@style/Widget.Auxio.Image.Medium"
+        app:enablePlaybackIndicator="false"
+        app:enableSelectionBadge="false" />
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="@dimen/spacing_mid_medium"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/stats_name"
+            style="@style/Widget.Auxio.TextView.Item.Primary"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="0dp"
+            tools:text="Album" />
+
+        <TextView
+            android:id="@+id/stats_info"
+            style="@style/Widget.Auxio.TextView.Item.Secondary"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="0dp"
+            tools:text="Artist · 38 plays" />
+
+    </LinearLayout>
+
+</LinearLayout>

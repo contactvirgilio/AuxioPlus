@@ -108,11 +108,24 @@ class PlayCountRepository @Inject constructor(@ApplicationContext context: Conte
                 val entry = Entry((counts[key]?.count ?: 0) + 1, now)
                 counts = counts + (key to entry)
                 database.write(key, entry)
+                database.log(key, now)
             }
             L.d("Counted a play of $uid")
             notifyListeners()
         }
     }
+
+    /**
+     * Every play counted since [sinceMs], from the play log. Plays counted before the log existed
+     * are not in it.
+     *
+     * @return Pairs of song UID strings and when they were played (unix time in milliseconds).
+     */
+    fun playsSince(sinceMs: Long): List<Pair<String, Long>> =
+        synchronized(lock) { database.readLog(sinceMs) }
+
+    /** Every song's total play count, including plays from before the play log existed. */
+    fun allCounts(): Map<String, Entry> = counts
 
     fun addListener(listener: Listener) {
         listeners.addIfAbsent(listener)
@@ -133,9 +146,59 @@ class PlayCountRepository @Inject constructor(@ApplicationContext context: Conte
                 "CREATE TABLE $TABLE ($COLUMN_UID TEXT PRIMARY KEY NOT NULL, " +
                     "$COLUMN_COUNT INTEGER NOT NULL, $COLUMN_LAST_PLAYED INTEGER NOT NULL)"
             )
+            createLog(db)
         }
 
-        override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {}
+        override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
+            if (oldVersion < 2) createLog(db)
+        }
+
+        private fun createLog(db: SQLiteDatabase) {
+            db.execSQL(
+                "CREATE TABLE IF NOT EXISTS $LOG_TABLE ($COLUMN_UID TEXT NOT NULL, " +
+                    "$COLUMN_PLAYED_AT INTEGER NOT NULL)"
+            )
+            db.execSQL(
+                "CREATE INDEX IF NOT EXISTS log_time ON $LOG_TABLE ($COLUMN_PLAYED_AT)"
+            )
+        }
+
+        fun log(uid: String, playedAtMs: Long) {
+            try {
+                val values =
+                    ContentValues().apply {
+                        put(COLUMN_UID, uid)
+                        put(COLUMN_PLAYED_AT, playedAtMs)
+                    }
+                writableDatabase.insert(LOG_TABLE, null, values)
+            } catch (e: Exception) {
+                L.e("Could not log play: $e")
+            }
+        }
+
+        fun readLog(sinceMs: Long): List<Pair<String, Long>> {
+            val result = mutableListOf<Pair<String, Long>>()
+            try {
+                readableDatabase
+                    .query(
+                        LOG_TABLE,
+                        arrayOf(COLUMN_UID, COLUMN_PLAYED_AT),
+                        "$COLUMN_PLAYED_AT >= ?",
+                        arrayOf(sinceMs.toString()),
+                        null,
+                        null,
+                        null,
+                    )
+                    .use { cursor ->
+                        while (cursor.moveToNext()) {
+                            result += cursor.getString(0) to cursor.getLong(1)
+                        }
+                    }
+            } catch (e: Exception) {
+                L.e("Could not read play log: $e")
+            }
+            return result
+        }
 
         fun readAll(): Map<String, Entry> {
             val result = mutableMapOf<String, Entry>()
@@ -184,10 +247,12 @@ class PlayCountRepository @Inject constructor(@ApplicationContext context: Conte
     private companion object {
         const val KEY_SINCE = "auxio_play_counts_since"
         const val DATABASE_NAME = "auxio_play_counts.db"
-        const val DATABASE_VERSION = 1
+        const val DATABASE_VERSION = 2
         const val TABLE = "play_counts"
         const val COLUMN_UID = "uid"
         const val COLUMN_COUNT = "count"
         const val COLUMN_LAST_PLAYED = "last_played"
+        const val LOG_TABLE = "play_log"
+        const val COLUMN_PLAYED_AT = "played_at"
     }
 }

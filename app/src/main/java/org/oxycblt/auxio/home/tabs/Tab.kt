@@ -57,23 +57,31 @@ sealed class Tab(open val type: MusicType) {
         // Where V is a bit representing the visibility and T is a 3-bit integer representing the
         // MusicMode for this tab.
         //
-        // Sequences with six tabs (since the Top 50 tab) are marked with SEQUENCE_SIX_TABS. Older
-        // sequences have five tabs and are read as such, with the Top 50 tab added hidden.
+        // Sequences with six tabs (since the Top 50 tab) are marked with SEQUENCE_SIX_TABS, and
+        // ones with seven (since the Activity tab) with SEQUENCE_SEVEN_TABS. Older sequences have
+        // fewer tabs and are read as such, with the newer tabs added hidden.
 
         /** The maximum index that a well-formed tab sequence should be. */
-        const val MAX_SEQUENCE_IDX = 5
+        const val MAX_SEQUENCE_IDX = 6
 
         /** The maximum index of a sequence saved before the Top 50 tab existed. */
         private const val LEGACY_MAX_SEQUENCE_IDX = 4
 
+        /** The maximum index of a sequence saved before the Activity tab existed. */
+        private const val SIX_TABS_MAX_SEQUENCE_IDX = 5
+
         /** Marks a sequence as holding six tabs rather than the original five. */
         private const val SEQUENCE_SIX_TABS = 1 shl 28
 
+        /** Marks a sequence as holding seven tabs. */
+        private const val SEQUENCE_SEVEN_TABS = 1 shl 29
+
         /**
          * The default tab sequence, in integer form. This represents a set of five visible tabs
-         * ordered as "Song", "Album", "Artist", "Genre", and "Playlists", then a hidden "Top 50".
+         * ordered as "Song", "Album", "Artist", "Genre", and "Playlists", then a hidden "Top 50"
+         * and a hidden "Activity".
          */
-        const val SEQUENCE_DEFAULT = SEQUENCE_SIX_TABS or 0b1000_1001_1010_1011_1100_0101
+        const val SEQUENCE_DEFAULT = SEQUENCE_SEVEN_TABS or 0b1000_1001_1010_1011_1100_0101_0110
 
         /** Maps between the integer code in the tab sequence and it's [MusicType]. */
         private val MODE_TABLE =
@@ -84,6 +92,7 @@ sealed class Tab(open val type: MusicType) {
                 MusicType.GENRES,
                 MusicType.PLAYLISTS,
                 MusicType.TOP,
+                MusicType.STATS,
             )
 
         /**
@@ -101,7 +110,7 @@ sealed class Tab(open val type: MusicType) {
                 )
             }
 
-            var sequence = SEQUENCE_SIX_TABS
+            var sequence = SEQUENCE_SEVEN_TABS
             var shift = MAX_SEQUENCE_IDX * 4
             for (tab in distinct.take(MAX_SEQUENCE_IDX + 1)) {
                 val bin =
@@ -126,8 +135,11 @@ sealed class Tab(open val type: MusicType) {
         fun fromIntCode(intCode: Int): Array<Tab>? {
             val tabs = mutableListOf<Tab>()
             val maxIdx =
-                if (intCode and SEQUENCE_SIX_TABS != 0) MAX_SEQUENCE_IDX
-                else LEGACY_MAX_SEQUENCE_IDX
+                when {
+                    intCode and SEQUENCE_SEVEN_TABS != 0 -> MAX_SEQUENCE_IDX
+                    intCode and SEQUENCE_SIX_TABS != 0 -> SIX_TABS_MAX_SEQUENCE_IDX
+                    else -> LEGACY_MAX_SEQUENCE_IDX
+                }
 
             // Try to parse a mode for each chunk in the sequence.
             // If we can't parse one, just skip it.

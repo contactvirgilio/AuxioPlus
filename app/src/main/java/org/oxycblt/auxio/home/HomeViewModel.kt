@@ -222,6 +222,8 @@ constructor(
                 _topSinceMs.value = homeGenerator.topSinceMs()
                 _topList.value = homeGenerator.top()
             }
+            // The Activity tab loads its own data.
+            MusicType.STATS -> {}
         }
     }
 

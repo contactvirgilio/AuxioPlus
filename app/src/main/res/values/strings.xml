@@ -547,4 +547,20 @@
     <string name="err_backup_folder">Could not use that folder</string>
     <string name="set_album_tiles">Album tiles</string>
     <string name="set_album_tiles_desc">Show albums as a grid of covers instead of a list</string>
+    <string name="lbl_activity">Activity</string>
+    <string name="lbl_range_week">Week</string>
+    <string name="lbl_range_month">Month</string>
+    <string name="lbl_range_year">Year</string>
+    <string name="lbl_range_all">All time</string>
+    <string name="lbl_listening_time">Listening time</string>
+    <string name="lbl_top_artists">Top artists</string>
+    <string name="lbl_top_albums">Top albums</string>
+    <string name="lng_stats_estimate">Listening time is estimated from plays and song length.</string>
+    <string name="fmt_stats_time">%1$d h %2$02d m</string>
+    <string name="fmt_stats_minutes">%d m</string>
+    <string name="fmt_stats_counts">%1$s · %2$s</string>
+    <plurals name="fmt_different_songs">
+        <item quantity="one">%d different song</item>
+        <item quantity="other">%d different songs</item>
+    </plurals>
 </resources>
