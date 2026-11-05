@@ -43,10 +43,12 @@ import org.oxycblt.auxio.list.recycler.FastScrollRecyclerView
 import org.oxycblt.auxio.list.sort.Sort
 import org.oxycblt.auxio.music.IndexingState
 import org.oxycblt.auxio.music.MusicViewModel
+import org.oxycblt.auxio.music.resolve
 import org.oxycblt.auxio.music.resolveNames
 import org.oxycblt.auxio.playback.PlaybackViewModel
 import org.oxycblt.auxio.playback.formatDurationMsPopup
 import org.oxycblt.auxio.util.collectImmediately
+import org.oxycblt.auxio.util.context
 import org.oxycblt.auxio.util.inflater
 import org.oxycblt.musikr.Album
 import org.oxycblt.musikr.Music
