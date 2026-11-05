@@ -334,9 +334,22 @@ constructor(
                 // The library changes after every playlist write, so re-fetch it each time.
                 val library = musicRepository.library
                 if (library != null) {
+                    // Exact paths first. If the zip was moved since it was exported, the relative
+                    // paths point at the wrong place, so fall back to matching the end of the path
+                    // (folder and file name) against the library.
+                    var tails: Map<String, Song?>? = null
                     val songs =
-                        imported.paths.mapNotNull {
-                            it.firstNotNullOfOrNull(library::findSongByPath)
+                        imported.paths.mapNotNull { possible ->
+                            possible.firstNotNullOfOrNull(library::findSongByPath)
+                                ?: possible.firstNotNullOfOrNull { path ->
+                                    val index =
+                                        tails
+                                            ?: library.songs
+                                                .groupBy { pathTail(it.path) }
+                                                .mapValues { (_, same) -> same.singleOrNull() }
+                                                .also { tails = it }
+                                    index[pathTail(path)]
+                                }
                         }
                     if (songs.isNotEmpty()) {
                         val name = imported.name ?: fallbackName
@@ -368,6 +381,10 @@ constructor(
                 }
         }
     }
+
+    /** The last three parts of a path (album folder, file, and the folder above), in lower case. */
+    private fun pathTail(path: org.oxycblt.musikr.fs.Path) =
+        path.components.components.takeLast(3).joinToString("/").lowercase()
 
     /** A file name for a new zip of all playlists, e.g "Auxio-playlists-2026-10-30_14-40.zip". */
     fun newPlaylistBackupName(): String {
