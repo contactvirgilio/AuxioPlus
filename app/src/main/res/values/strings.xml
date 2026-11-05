@@ -530,4 +530,19 @@
     </plurals>
     <string name="lbl_volume">Volume</string>
     <string name="lbl_brightness">Brightness</string>
+    <string name="set_backups">Backups</string>
+    <string name="set_backup_folder">Backup folder</string>
+    <string name="set_backup_folder_desc">Pick a folder; an \"Auxio\" folder is created inside it</string>
+    <string name="set_backup_folder_set">Saving to %s</string>
+    <string name="set_backup_interval">Automatic backups</string>
+    <string name="set_backup_off">Off</string>
+    <string name="set_backup_monthly">Every month</string>
+    <string name="set_backup_bimonthly">Every two months</string>
+    <string name="set_backup_now">Back up now</string>
+    <string name="set_backup_now_desc">Save all playlists and the Top 50 to the backup folder</string>
+    <string name="set_backup_last">Last backup: %s</string>
+    <string name="set_backup_running">Backing up…</string>
+    <string name="set_backup_need_folder">Pick a backup folder first</string>
+    <string name="err_backup_failed">The last backup failed</string>
+    <string name="err_backup_folder">Could not use that folder</string>
 </resources>

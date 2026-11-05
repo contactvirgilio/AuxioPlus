@@ -32,6 +32,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.oxycblt.auxio.R
 import org.oxycblt.auxio.list.ListSettings
 import org.oxycblt.auxio.util.Event
@@ -57,6 +58,7 @@ constructor(
     @ApplicationContext private val context: Context,
     private val listSettings: ListSettings,
     private val musicRepository: MusicRepository,
+    private val autoBackup: AutoBackup,
 ) : ViewModel(), MusicRepository.UpdateListener, MusicRepository.IndexingListener {
     private val externalPlaylistManager = ExternalPlaylistManager.from(context)
 
@@ -116,6 +118,8 @@ constructor(
                 library.songs.sumOf { it.size },
             )
         L.d("Updated statistics: ${_statistics.value}")
+        // Do the monthly/bi-monthly backup now that there's a library to back up, if it's due.
+        viewModelScope.launch(Dispatchers.IO) { autoBackup.runIfDue() }
     }
 
     override fun onIndexingStateChanged() {
@@ -369,6 +373,14 @@ constructor(
     fun newPlaylistBackupName(): String {
         val date = SimpleDateFormat("yyyy-MM-dd_HH-mm", Locale.US).format(Date())
         return "Auxio-playlists-$date.zip"
+    }
+
+    /** Back up the playlists and Top 50 to the backup folder now, then call [onDone] on main. */
+    fun backUpNow(onDone: () -> Unit) {
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) { autoBackup.run() }
+            onDone()
+        }
     }
 
     /** Hide the error shown after a failed export/import of all playlists. */

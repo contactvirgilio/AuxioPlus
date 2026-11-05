@@ -18,20 +18,28 @@
  
 package org.oxycblt.auxio.settings.categories
 
+import android.net.Uri
 import android.os.Bundle
+import android.text.format.DateUtils
+import android.widget.Toast
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.fragment.app.activityViewModels
+import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import androidx.preference.Preference
 import androidx.recyclerview.widget.SimpleItemAnimator
 import coil3.ImageLoader
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.oxycblt.auxio.R
+import org.oxycblt.auxio.music.AutoBackup
 import org.oxycblt.auxio.music.MusicViewModel
 import org.oxycblt.auxio.music.PlaylistBackupState
 import org.oxycblt.auxio.settings.BasePreferenceFragment
@@ -52,6 +60,8 @@ class MusicPreferenceFragment : BasePreferenceFragment(R.xml.preferences_music) 
     // Activity-scoped so an export/import keeps running if the user leaves this screen.
     private val musicModel: MusicViewModel by activityViewModels()
     @Inject lateinit var imageLoader: ImageLoader
+    @Inject lateinit var autoBackup: AutoBackup
+    private var backupFolderLauncher: ActivityResultLauncher<Uri?>? = null
     private var exportPlaylistsLauncher: ActivityResultLauncher<String>? = null
     private var importPlaylistsLauncher: ActivityResultLauncher<Array<String>>? = null
 
@@ -67,6 +77,25 @@ class MusicPreferenceFragment : BasePreferenceFragment(R.xml.preferences_music) 
                 }
                 L.d("Exporting all playlists to $uri")
                 musicModel.exportAllPlaylists(uri)
+            }
+        backupFolderLauncher =
+            registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
+                if (uri == null) {
+                    L.w("No folder returned from folder picker")
+                    return@registerForActivityResult
+                }
+                lifecycleScope.launch {
+                    val ok = withContext(Dispatchers.IO) { autoBackup.chooseFolder(uri) }
+                    if (!ok) {
+                        Toast.makeText(
+                                requireContext(),
+                                R.string.err_backup_folder,
+                                Toast.LENGTH_SHORT,
+                            )
+                            .show()
+                    }
+                    updateBackupPreferences()
+                }
             }
         importPlaylistsLauncher =
             registerForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
@@ -92,6 +121,7 @@ class MusicPreferenceFragment : BasePreferenceFragment(R.xml.preferences_music) 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         collectImmediately(musicModel.playlistBackupState, ::updatePlaylistBackupState)
+        updateBackupPreferences()
     }
 
     override fun onOpenDialogPreference(preference: WrappedDialogPreference) {
@@ -146,6 +176,21 @@ class MusicPreferenceFragment : BasePreferenceFragment(R.xml.preferences_music) 
                     true
                 }
         }
+        if (preference.key == getString(R.string.set_key_backup_folder)) {
+            preference.onPreferenceClickListener =
+                Preference.OnPreferenceClickListener {
+                    requireNotNull(backupFolderLauncher) { "Folder launcher was not available" }
+                        .launch(null)
+                    true
+                }
+        }
+        if (preference.key == getString(R.string.set_key_backup_now)) {
+            preference.onPreferenceClickListener =
+                Preference.OnPreferenceClickListener {
+                    runBackupNow(preference)
+                    true
+                }
+        }
         if (preference.key == getString(R.string.set_key_with_hidden)) {
             L.d("Configuring ignore hidden files setting")
             preference.onPreferenceChangeListener =
@@ -154,6 +199,37 @@ class MusicPreferenceFragment : BasePreferenceFragment(R.xml.preferences_music) 
                     musicModel.refresh()
                     true
                 }
+        }
+    }
+
+    private fun updateBackupPreferences() {
+        findPreference<Preference>(getString(R.string.set_key_backup_folder))?.summary =
+            autoBackup.folderLabel?.let { getString(R.string.set_backup_folder_set, "$it/Auxio") }
+                ?: getString(R.string.set_backup_folder_desc)
+        findPreference<Preference>(getString(R.string.set_key_backup_now))?.summary =
+            when {
+                autoBackup.lastFailed -> getString(R.string.err_backup_failed)
+                autoBackup.lastBackupMs > 0 ->
+                    getString(
+                        R.string.set_backup_last,
+                        DateUtils.getRelativeTimeSpanString(autoBackup.lastBackupMs),
+                    )
+                else -> getString(R.string.set_backup_now_desc)
+            }
+    }
+
+    private fun runBackupNow(preference: Preference) {
+        if (autoBackup.folderLabel == null) {
+            Toast.makeText(requireContext(), R.string.set_backup_need_folder, Toast.LENGTH_SHORT)
+                .show()
+            return
+        }
+        preference.isEnabled = false
+        preference.summary = getString(R.string.set_backup_running)
+        // Not tied to the screen so leaving it doesn't cancel the backup halfway.
+        musicModel.backUpNow {
+            preference.isEnabled = true
+            if (isAdded) updateBackupPreferences()
         }
     }
 

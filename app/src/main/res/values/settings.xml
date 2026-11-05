@@ -218,4 +218,18 @@
 
     <integer name="visualizer_mode_spectrum">0xA142</integer>
     <integer name="visualizer_mode_spectrum_cycle">0xA143</integer>
+
+    <string name="set_key_backup_folder" translatable="false">auxio_backup_folder</string>
+    <string name="set_key_backup_interval" translatable="false">auxio_backup_interval</string>
+    <string name="set_key_backup_now" translatable="false">auxio_backup_now</string>
+    <string-array name="entries_backup_interval">
+        <item>@string/set_backup_off</item>
+        <item>@string/set_backup_monthly</item>
+        <item>@string/set_backup_bimonthly</item>
+    </string-array>
+    <integer-array name="values_backup_interval">
+        <item>0</item>
+        <item>1</item>
+        <item>2</item>
+    </integer-array>
 </resources>

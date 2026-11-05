@@ -42,6 +42,28 @@
 
     </PreferenceCategory>
 
+    <PreferenceCategory app:title="@string/set_backups">
+
+        <Preference
+            app:key="@string/set_key_backup_folder"
+            app:persistent="false"
+            app:summary="@string/set_backup_folder_desc"
+            app:title="@string/set_backup_folder" />
+
+        <org.oxycblt.auxio.settings.ui.IntListPreference
+            app:defaultValue="0"
+            app:entries="@array/entries_backup_interval"
+            app:entryValues="@array/values_backup_interval"
+            app:key="@string/set_key_backup_interval"
+            app:title="@string/set_backup_interval" />
+
+        <Preference
+            app:key="@string/set_key_backup_now"
+            app:summary="@string/set_backup_now_desc"
+            app:title="@string/set_backup_now" />
+
+    </PreferenceCategory>
+
     <PreferenceCategory app:title="@string/set_images">
 
         <org.oxycblt.auxio.settings.ui.IntListPreference
