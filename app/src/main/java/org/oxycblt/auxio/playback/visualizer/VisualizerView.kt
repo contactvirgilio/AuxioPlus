@@ -276,26 +276,40 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
      * jumps well away from the previous palette so that two in a row never look alike.
      */
     private fun randomPalette(into: IntArray) {
+        val hue: Float
+        val sweep: Float
+        val saturation: Float
+        val dark: Float
+        val lift: Float
         if (random.nextFloat() < EARTHY_CHANCE) {
-            // Brown is just dark, muted orange, which the bright palettes below never reach.
-            lastHue = 15f + random.nextFloat() * 30f
-            val saturation = 0.4f + random.nextFloat() * 0.3f
-            val lightness = 0.2f + random.nextFloat() * 0.08f
-            val lift = 0.09f + random.nextFloat() * 0.05f
-            val sweep = (random.nextFloat() - 0.5f) * 30f
-            into[0] = hsl(lastHue, saturation, lightness)
-            into[1] = hsl(lastHue + sweep, saturation, lightness + lift)
-            into[2] = hsl(lastHue + 2 * sweep, saturation, lightness + 2 * lift)
-            return
+            // Brown is just dark, muted orange, which the bright palettes never reach.
+            hue = 15f + random.nextFloat() * 30f
+            sweep = (random.nextFloat() - 0.5f) * 30f
+            saturation = 0.4f + random.nextFloat() * 0.3f
+            dark = 0.2f + random.nextFloat() * 0.08f
+            lift = 0.09f + random.nextFloat() * 0.05f
+        } else {
+            hue = (lastHue + MIN_HUE_JUMP + random.nextFloat() * (360f - 2 * MIN_HUE_JUMP)) % 360f
+            // From nearly the same colour all the way to opposites on the colour wheel.
+            sweep = (if (random.nextBoolean()) 1f else -1f) * (15f + random.nextFloat() * 90f)
+            saturation = 0.5f + random.nextFloat() * 0.45f
+            dark = 0.28f + random.nextFloat() * 0.2f
+            lift = 0.08f + random.nextFloat() * 0.1f
         }
-        lastHue = (lastHue + MIN_HUE_JUMP + random.nextFloat() * (360f - 2 * MIN_HUE_JUMP)) % 360f
-        val sweep = (if (random.nextBoolean()) 1f else -1f) * (25f + random.nextFloat() * 110f)
-        val saturation = 0.5f + random.nextFloat() * 0.45f
-        val lightness = 0.3f + random.nextFloat() * 0.18f
-        val lift = 0.1f + random.nextFloat() * 0.08f
-        into[0] = hsl(lastHue, saturation, lightness)
-        into[1] = hsl(lastHue + sweep, saturation, lightness + lift)
-        into[2] = hsl(lastHue + 2 * sweep, saturation, lightness + 2 * lift)
+        lastHue = hue
+        for (i in 0 until 3) {
+            // Every stop gets a little of its own saturation and lightness, so palettes differ in
+            // more than just their hue.
+            val s = (saturation + (random.nextFloat() - 0.5f) * 0.2f).coerceIn(0.3f, 1f)
+            val l = (dark + i * lift + (random.nextFloat() - 0.5f) * 0.06f).coerceIn(0.15f, 0.8f)
+            into[i] = hsl(hue + i * sweep, s, l)
+        }
+        // Half the time run it light to dark instead of dark to light.
+        if (random.nextBoolean()) {
+            val first = into[0]
+            into[0] = into[2]
+            into[2] = first
+        }
     }
 
     /** Map a loudness in decibels to a 0 to 1 level, with [FLOOR_DB] and below being 0. */
