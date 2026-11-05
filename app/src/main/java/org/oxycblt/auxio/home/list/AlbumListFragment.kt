@@ -20,14 +20,18 @@ package org.oxycblt.auxio.home.list
 
 import android.os.Bundle
 import android.view.LayoutInflater
+import android.view.View
 import android.view.ViewGroup
 import androidx.core.view.isInvisible
 import androidx.core.view.isVisible
 import androidx.fragment.app.activityViewModels
+import androidx.preference.PreferenceManager
+import androidx.recyclerview.widget.GridLayoutManager
 import dagger.hilt.android.AndroidEntryPoint
 import java.util.Calendar
 import org.oxycblt.auxio.R
 import org.oxycblt.auxio.databinding.FragmentHomeListBinding
+import org.oxycblt.auxio.databinding.ItemAlbumTileBinding
 import org.oxycblt.auxio.detail.DetailViewModel
 import org.oxycblt.auxio.home.HomeViewModel
 import org.oxycblt.auxio.list.ListFragment
@@ -39,9 +43,11 @@ import org.oxycblt.auxio.list.recycler.FastScrollRecyclerView
 import org.oxycblt.auxio.list.sort.Sort
 import org.oxycblt.auxio.music.IndexingState
 import org.oxycblt.auxio.music.MusicViewModel
+import org.oxycblt.auxio.music.resolveNames
 import org.oxycblt.auxio.playback.PlaybackViewModel
 import org.oxycblt.auxio.playback.formatDurationMsPopup
 import org.oxycblt.auxio.util.collectImmediately
+import org.oxycblt.auxio.util.inflater
 import org.oxycblt.musikr.Album
 import org.oxycblt.musikr.Music
 import org.oxycblt.musikr.MusicParent
@@ -63,6 +69,7 @@ class AlbumListFragment :
     override val musicModel: MusicViewModel by activityViewModels()
     override val playbackModel: PlaybackViewModel by activityViewModels()
     private val albumAdapter = AlbumAdapter(this)
+    private var tilesApplied: Boolean? = null
 
     override fun onCreateBinding(inflater: LayoutInflater) =
         FragmentHomeListBinding.inflate(inflater)
@@ -76,6 +83,7 @@ class AlbumListFragment :
             popupProvider = this@AlbumListFragment
             listener = this@AlbumListFragment
         }
+        applyTiles(binding)
 
         binding.homeNoMusicPlaceholder.apply {
             setImageResource(R.drawable.ic_album_48)
@@ -94,6 +102,32 @@ class AlbumListFragment :
             playbackModel.isPlaying,
             ::updatePlayback,
         )
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // The tile setting may have been changed in settings while this screen was kept around.
+        binding?.let(::applyTiles)
+    }
+
+    /** Switch between the list and the tile grid depending on the setting. */
+    private fun applyTiles(binding: FragmentHomeListBinding) {
+        val tiles =
+            PreferenceManager.getDefaultSharedPreferences(requireContext())
+                .getBoolean(getString(R.string.set_key_album_tiles), false)
+        if (tiles == tilesApplied) return
+        tilesApplied = tiles
+        val density = resources.displayMetrics.density
+        val columns =
+            if (tiles) {
+                (resources.displayMetrics.widthPixels / density / TILE_WIDTH_DP)
+                    .toInt()
+                    .coerceAtLeast(2)
+            } else {
+                1
+            }
+        (binding.homeRecycler.layoutManager as? GridLayoutManager)?.spanCount = columns
+        albumAdapter.tiles = tiles
     }
 
     override fun onDestroyBinding(binding: FragmentHomeListBinding) {
@@ -188,13 +222,64 @@ class AlbumListFragment :
      * @param listener An [SelectableListListener] to bind interactions to.
      */
     private class AlbumAdapter(private val listener: SelectableListListener<Album>) :
-        SelectionIndicatorAdapter<Album, AlbumViewHolder>(AlbumViewHolder.DIFF_CALLBACK) {
+        SelectionIndicatorAdapter<Album, SelectionIndicatorAdapter.ViewHolder>(
+            AlbumViewHolder.DIFF_CALLBACK
+        ) {
+        /** Whether albums are shown as tiles instead of list rows. */
+        var tiles = false
+            set(value) {
+                if (field != value) {
+                    field = value
+                    notifyDataSetChanged()
+                }
+            }
+
+        override fun getItemViewType(position: Int) = if (tiles) TILE_VIEW_TYPE else LIST_VIEW_TYPE
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int) =
-            AlbumViewHolder.from(parent)
+            if (viewType == TILE_VIEW_TYPE) AlbumTileViewHolder.from(parent)
+            else AlbumViewHolder.from(parent)
 
-        override fun onBindViewHolder(holder: AlbumViewHolder, position: Int) {
-            holder.bind(getItem(position), listener)
+        override fun onBindViewHolder(holder: SelectionIndicatorAdapter.ViewHolder, position: Int) {
+            when (holder) {
+                is AlbumTileViewHolder -> holder.bind(getItem(position), listener)
+                is AlbumViewHolder -> holder.bind(getItem(position), listener)
+            }
         }
+
+        private companion object {
+            const val LIST_VIEW_TYPE = AlbumViewHolder.VIEW_TYPE
+            const val TILE_VIEW_TYPE = AlbumViewHolder.VIEW_TYPE + 1000
+        }
+    }
+
+    /** A [SelectionIndicatorAdapter.ViewHolder] that shows an [Album] as a cover tile. */
+    private class AlbumTileViewHolder(private val binding: ItemAlbumTileBinding) :
+        SelectionIndicatorAdapter.ViewHolder(binding.root) {
+        fun bind(album: Album, listener: SelectableListListener<Album>) {
+            listener.bind(album, this, menuButton = binding.tileMenu)
+            binding.tileImage.bind(album)
+            binding.tileName.text = album.name.resolve(binding.context)
+            binding.tileInfo.text = album.artists.resolveNames(binding.context)
+        }
+
+        override fun updatePlayingIndicator(isActive: Boolean, isPlaying: Boolean) {
+            binding.root.isSelected = isActive
+            binding.tileImage.setPlaying(isPlaying)
+        }
+
+        override fun updateSelectionIndicator(isSelected: Boolean) {
+            binding.root.isActivated = isSelected
+        }
+
+        companion object {
+            fun from(parent: View) =
+                AlbumTileViewHolder(ItemAlbumTileBinding.inflate(parent.context.inflater))
+        }
+    }
+
+    private companion object {
+        /** Roughly how wide a tile should be, so the number of columns follows the screen. */
+        const val TILE_WIDTH_DP = 170
     }
 }

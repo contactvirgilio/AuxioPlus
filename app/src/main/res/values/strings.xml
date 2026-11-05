@@ -545,4 +545,6 @@
     <string name="set_backup_need_folder">Pick a backup folder first</string>
     <string name="err_backup_failed">The last backup failed</string>
     <string name="err_backup_folder">Could not use that folder</string>
+    <string name="set_album_tiles">Album tiles</string>
+    <string name="set_album_tiles_desc">Show albums as a grid of covers instead of a list</string>
 </resources>

@@ -232,4 +232,5 @@
         <item>1</item>
         <item>2</item>
     </integer-array>
+    <string name="set_key_album_tiles" translatable="false">auxio_album_tiles</string>
 </resources>
