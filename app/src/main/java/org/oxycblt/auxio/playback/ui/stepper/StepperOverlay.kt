@@ -18,23 +18,35 @@
  
 package org.oxycblt.auxio.playback.ui.stepper
 
+import android.app.Activity
 import android.content.Context
+import android.content.ContextWrapper
 import android.content.res.ColorStateList
+import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.Paint
+import android.graphics.RectF
+import android.media.AudioManager
+import android.provider.Settings
 import android.util.AttributeSet
 import android.view.GestureDetector
 import android.view.LayoutInflater
 import android.view.MotionEvent
+import android.view.ViewConfiguration
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.content.withStyledAttributes
 import androidx.dynamicanimation.animation.SpringAnimation
+import com.google.android.material.R as MR
 import com.google.android.material.shape.MaterialShapeDrawable
 import com.google.android.material.shape.ShapeAppearanceModel
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
+import kotlin.math.abs
+import kotlin.math.roundToInt
 import org.oxycblt.auxio.R
 import org.oxycblt.auxio.ui.Effect
 import org.oxycblt.auxio.ui.UISettings
+import org.oxycblt.auxio.util.getAttrColorCompat
 
 enum class Direction {
     FORWARDS,
@@ -63,6 +75,31 @@ class StepperOverlay(context: Context, attrs: AttributeSet?) :
     private val gestureDetector: GestureDetector
 
     var listener: Listener? = null
+
+    private val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+    private val touchSlop = ViewConfiguration.get(context).scaledTouchSlop
+    private val density = resources.displayMetrics.density
+    private val panelPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val fillPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val labelPaint =
+        Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            textAlign = Paint.Align.CENTER
+            textSize = 14f * resources.displayMetrics.scaledDensity
+        }
+    private val panelRect = RectF()
+    private val fillRect = RectF()
+    private val hideIndicator = Runnable {
+        indicatorLabel = null
+        invalidate()
+    }
+
+    private var downX = 0f
+    private var downY = 0f
+    private var adjusting = false
+    private var adjustingBrightness = false
+    private var startLevel = 0f
+    private var indicatorLevel = 0f
+    private var indicatorLabel: String? = null
 
     private val alphaSpring = Effect.FAST
 
@@ -133,8 +170,117 @@ class StepperOverlay(context: Context, attrs: AttributeSet?) :
         rightTapView.setDirection(Direction.FORWARDS) // isLeft = false for right side
     }
 
-    override fun onTouchEvent(event: MotionEvent): Boolean =
-        gestureDetector.onTouchEvent(event) || super.onTouchEvent(event)
+    override fun onTouchEvent(event: MotionEvent): Boolean {
+        when (event.actionMasked) {
+            MotionEvent.ACTION_DOWN -> {
+                downX = event.x
+                downY = event.y
+                adjusting = false
+            }
+            MotionEvent.ACTION_MOVE -> {
+                if (!adjusting) {
+                    val dx = event.x - downX
+                    val dy = event.y - downY
+                    if (abs(dy) > touchSlop && abs(dy) > abs(dx) * 1.5f) {
+                        // A mostly vertical drag: the left half changes the brightness and the
+                        // right half the volume.
+                        adjusting = true
+                        adjustingBrightness = downX < width * 0.5f
+                        startLevel =
+                            if (adjustingBrightness) currentBrightness() else currentVolume()
+                        parent?.requestDisallowInterceptTouchEvent(true)
+                    }
+                }
+                if (adjusting) {
+                    val level = (startLevel + (downY - event.y) / (height * 0.8f)).coerceIn(0f, 1f)
+                    if (adjustingBrightness) setBrightness(level) else setVolume(level)
+                    return true
+                }
+            }
+            MotionEvent.ACTION_UP,
+            MotionEvent.ACTION_CANCEL -> {
+                if (adjusting) {
+                    adjusting = false
+                    return true
+                }
+            }
+        }
+        return gestureDetector.onTouchEvent(event) || super.onTouchEvent(event)
+    }
+
+    private fun currentVolume() =
+        audioManager.getStreamVolume(AudioManager.STREAM_MUSIC).toFloat() /
+            audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
+
+    private fun setVolume(level: Float) {
+        val max = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
+        audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, (level * max).roundToInt(), 0)
+        showIndicator(context.getString(R.string.lbl_volume), level)
+    }
+
+    private fun hostActivity(): Activity? {
+        var current: Context? = context
+        while (current is ContextWrapper) {
+            if (current is Activity) return current
+            current = current.baseContext
+        }
+        return null
+    }
+
+    private fun currentBrightness(): Float {
+        val window = hostActivity()?.window
+        val set = window?.attributes?.screenBrightness ?: -1f
+        if (set >= 0f) return set
+        // Follow the system setting until the first change.
+        return try {
+            Settings.System.getInt(context.contentResolver, Settings.System.SCREEN_BRIGHTNESS) /
+                255f
+        } catch (e: Settings.SettingNotFoundException) {
+            0.5f
+        }
+    }
+
+    private fun setBrightness(level: Float) {
+        val window = hostActivity()?.window ?: return
+        val attributes = window.attributes
+        // Never go fully black, or the screen would be unusable.
+        attributes.screenBrightness = level.coerceAtLeast(0.01f)
+        window.attributes = attributes
+        showIndicator(context.getString(R.string.lbl_brightness), level)
+    }
+
+    private fun showIndicator(label: String, level: Float) {
+        indicatorLabel = "$label ${(level * 100).roundToInt()}%"
+        indicatorLevel = level
+        removeCallbacks(hideIndicator)
+        postDelayed(hideIndicator, INDICATOR_MS)
+        invalidate()
+    }
+
+    override fun dispatchDraw(canvas: Canvas) {
+        super.dispatchDraw(canvas)
+        val label = indicatorLabel ?: return
+        val panelWidth = 168f * density
+        val panelHeight = 44f * density
+        val left = (width - panelWidth) / 2
+        val top = 16f * density
+        panelPaint.color = context.getAttrColorCompat(MR.attr.colorSurface).defaultColor
+        panelPaint.alpha = 220
+        fillPaint.color =
+            context.getAttrColorCompat(androidx.appcompat.R.attr.colorPrimary).defaultColor
+        fillPaint.alpha = 90
+        labelPaint.color = context.getAttrColorCompat(MR.attr.colorOnSurface).defaultColor
+        panelRect.set(left, top, left + panelWidth, top + panelHeight)
+        val radius = panelHeight / 2
+        canvas.drawRoundRect(panelRect, radius, radius, panelPaint)
+        canvas.save()
+        canvas.clipRect(left, top, left + panelWidth * indicatorLevel, top + panelHeight)
+        fillRect.set(panelRect)
+        canvas.drawRoundRect(fillRect, radius, radius, fillPaint)
+        canvas.restore()
+        val baseline = top + panelHeight / 2 - (labelPaint.ascent() + labelPaint.descent()) / 2
+        canvas.drawText(label, left + panelWidth / 2, baseline, labelPaint)
+    }
 
     override fun onSingleTapConfirmed(e: MotionEvent): Boolean {
         // A single tap switches between the album cover and the visualizer.
@@ -295,5 +441,6 @@ class StepperOverlay(context: Context, attrs: AttributeSet?) :
 
     private companion object {
         private const val EXIT_DELAY_MS = 500L
+        private const val INDICATOR_MS = 900L
     }
 }

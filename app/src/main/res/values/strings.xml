@@ -528,4 +528,6 @@
         <item quantity="one">%d play</item>
         <item quantity="other">%d plays</item>
     </plurals>
+    <string name="lbl_volume">Volume</string>
+    <string name="lbl_brightness">Brightness</string>
 </resources>
