@@ -40,7 +40,6 @@ import org.oxycblt.auxio.list.SelectableListListener
 import org.oxycblt.auxio.list.adapter.SelectionIndicatorAdapter
 import org.oxycblt.auxio.music.MusicViewModel
 import org.oxycblt.auxio.music.resolve
-import org.oxycblt.auxio.music.resolveNames
 import org.oxycblt.auxio.playback.PlaybackViewModel
 import org.oxycblt.auxio.util.collectImmediately
 import org.oxycblt.auxio.util.context
@@ -154,7 +153,8 @@ class TopSongListFragment : ListFragment<Song, FragmentHomeTopBinding>() {
             binding.topInfo.text =
                 binding.context.getString(
                     R.string.fmt_top_song_info,
-                    top.song.artists.resolveNames(binding.context),
+                    // Only the main artist, not the collaborators.
+                    top.song.artists.first().name.resolve(binding.context),
                     binding.context.getPlural(R.plurals.fmt_play_count, top.plays),
                 )
             binding.topRank.text = top.rank.toString()

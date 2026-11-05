@@ -30,8 +30,11 @@
         app:layout_constraintStart_toEndOf="@+id/top_rank"
         app:layout_constraintTop_toTopOf="parent" />
 
-    <TextView
+    <org.oxycblt.auxio.ui.MarqueeTextView
         android:id="@+id/top_name"
+        android:ellipsize="marquee"
+        android:marqueeRepeatLimit="marquee_forever"
+        android:singleLine="true"
         style="@style/Widget.Auxio.TextView.Item.Primary"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
@@ -44,8 +47,11 @@
         app:layout_constraintVertical_chainStyle="packed"
         tools:text="Song" />
 
-    <TextView
+    <org.oxycblt.auxio.ui.MarqueeTextView
         android:id="@+id/top_info"
+        android:ellipsize="marquee"
+        android:marqueeRepeatLimit="marquee_forever"
+        android:singleLine="true"
         style="@style/Widget.Auxio.TextView.Item.Secondary"
         android:layout_width="0dp"
         android:layout_height="wrap_content"

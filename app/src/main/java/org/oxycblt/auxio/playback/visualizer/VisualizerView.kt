@@ -32,6 +32,7 @@ import androidx.core.graphics.ColorUtils
 import androidx.core.view.isVisible
 import com.google.android.material.R as MR
 import dagger.hilt.android.AndroidEntryPoint
+import java.util.Random
 import javax.inject.Inject
 import kotlin.math.max
 import kotlin.math.min
@@ -79,6 +80,11 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
     private val peakPaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val cycleColors = IntArray(3)
     private val gradientStops = floatArrayOf(0f, 0.55f, 1f)
+    private val random = Random()
+    private var lastHue = random.nextFloat() * 360f
+    private var currentPalette = IntArray(3).also { randomPalette(it) }
+    private var nextPalette = IntArray(3).also { randomPalette(it) }
+    private var paletteStart = SystemClock.elapsedRealtime()
 
     private val frame = Runnable { onFrame() }
 
@@ -244,21 +250,40 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
     }
 
     /**
-     * Work out the current three gradient colours: each palette shows for the interval, then fades
-     * into the next one.
+     * Work out the current three gradient colours: each random palette shows for the interval, then
+     * fades into the next one, which is only picked once it's needed.
      */
     private fun updateCycleColors() {
         val interval = max(1000L, intervalMs)
         val fade = min(FADE_BETWEEN_PALETTES_MS, interval / 2)
-        val position = SystemClock.elapsedRealtime() % (interval * PALETTES.size)
-        val index = (position / interval).toInt()
-        val within = position - index * interval
-        val t = if (within > interval - fade) (within - (interval - fade)).toFloat() / fade else 0f
-        val from = PALETTES[index]
-        val to = PALETTES[(index + 1) % PALETTES.size]
-        for (i in 0 until 3) {
-            cycleColors[i] = ColorUtils.blendARGB(from[i], to[i], t)
+        val now = SystemClock.elapsedRealtime()
+        while (now - paletteStart >= interval) {
+            paletteStart += interval
+            val done = currentPalette
+            currentPalette = nextPalette
+            nextPalette = done
+            randomPalette(nextPalette)
         }
+        val within = now - paletteStart
+        val t = if (within > interval - fade) (within - (interval - fade)).toFloat() / fade else 0f
+        for (i in 0 until 3) {
+            cycleColors[i] = ColorUtils.blendARGB(currentPalette[i], nextPalette[i], t)
+        }
+    }
+
+    /**
+     * Fill [into] with a brand new random palette of three colours, bottom to top. The hue always
+     * jumps well away from the previous palette so that two in a row never look alike.
+     */
+    private fun randomPalette(into: IntArray) {
+        lastHue = (lastHue + MIN_HUE_JUMP + random.nextFloat() * (360f - 2 * MIN_HUE_JUMP)) % 360f
+        val sweep = (if (random.nextBoolean()) 1f else -1f) * (25f + random.nextFloat() * 110f)
+        val saturation = 0.6f + random.nextFloat() * 0.35f
+        val lightness = 0.38f + random.nextFloat() * 0.1f
+        val lift = 0.1f + random.nextFloat() * 0.08f
+        into[0] = hsl(lastHue, saturation, lightness)
+        into[1] = hsl(lastHue + sweep, saturation, lightness + lift)
+        into[2] = hsl(lastHue + 2 * sweep, saturation, lightness + 2 * lift)
     }
 
     /** Map a loudness in decibels to a 0 to 1 level, with [FLOOR_DB] and below being 0. */
@@ -278,27 +303,7 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
         const val FADE_MS = 150L
         const val FADE_BETWEEN_PALETTES_MS = 1500L
 
-        const val PALETTE_COUNT = 50
-
-        /** Step between palettes around the colour wheel, so neighbours are always far apart. */
-        const val GOLDEN_ANGLE = 137.508f
-
-        /**
-         * 50 palettes of three colours each, bottom to top. Each one starts from a different hue
-         * and sweeps around the colour wheel by a varying amount and direction, getting lighter
-         * towards the top.
-         */
-        val PALETTES =
-            Array(PALETTE_COUNT) { i ->
-                val hue = i * GOLDEN_ANGLE
-                val sweep = (if (i % 2 == 0) 1f else -1f) * (30f + (i % 5) * 12f)
-                val saturation = 0.7f + (i % 3) * 0.1f
-                intArrayOf(
-                    hsl(hue, saturation, 0.42f),
-                    hsl(hue + sweep, saturation, 0.55f),
-                    hsl(hue + 2 * sweep, saturation, 0.68f),
-                )
-            }
+        const val MIN_HUE_JUMP = 60f
 
         private fun hsl(hue: Float, saturation: Float, lightness: Float) =
             ColorUtils.HSLToColor(floatArrayOf(((hue % 360f) + 360f) % 360f, saturation, lightness))
