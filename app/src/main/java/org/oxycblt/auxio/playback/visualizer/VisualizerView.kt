@@ -276,6 +276,10 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
      * jumps well away from the previous palette so that two in a row never look alike.
      */
     private fun randomPalette(into: IntArray) {
+        if (random.nextFloat() < RARE_CHANCE) {
+            RARE_PALETTES[random.nextInt(RARE_PALETTES.size)].copyInto(into)
+            return
+        }
         val hue: Float
         val sweep: Float
         val saturation: Float
@@ -330,6 +334,24 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
         const val FADE_BETWEEN_PALETTES_MS = 1500L
 
         const val MIN_HUE_JUMP = 60f
+
+        /** How often a palette is one of the hand-picked [RARE_PALETTES]: about 1 in 1000. */
+        const val RARE_CHANCE = 0.001f
+
+        /** Hand-picked palettes, bottom to top, that only turn up now and then. */
+        val RARE_PALETTES =
+            arrayOf(
+                // Sunset.
+                intArrayOf(0xFF2B1055.toInt(), 0xFFD53369.toInt(), 0xFFFFB347.toInt()),
+                // Vaporwave.
+                intArrayOf(0xFFFF71CE.toInt(), 0xFFB967FF.toInt(), 0xFF01CDFE.toInt()),
+                // Green, red and gold, like a certain flag.
+                intArrayOf(0xFF006600.toInt(), 0xFFD7141A.toInt(), 0xFFFFCC00.toInt()),
+                // Aurora.
+                intArrayOf(0xFF0B6E4F.toInt(), 0xFF08D9D6.toInt(), 0xFFB8F2E6.toInt()),
+                // Ember.
+                intArrayOf(0xFF1A0000.toInt(), 0xFFC1121F.toInt(), 0xFFFFB703.toInt()),
+            )
 
         /** How often a palette is a dark, muted brown instead of a bright colour. */
         const val EARTHY_CHANCE = 0.18f
