@@ -338,7 +338,10 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
         /** How often a palette is one of the hand-picked [RARE_PALETTES]: about 1 in 1000. */
         const val RARE_CHANCE = 0.001f
 
-        /** Hand-picked palettes, bottom to top, that only turn up now and then. */
+        /**
+         * Hand-picked palettes, bottom to top, that only turn up now and then. They don't follow
+         * the rules of the random ones: some are two-tone, some clash on purpose.
+         */
         val RARE_PALETTES =
             arrayOf(
                 // Sunset.
@@ -351,6 +354,18 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
                 intArrayOf(0xFF0B6E4F.toInt(), 0xFF08D9D6.toInt(), 0xFFB8F2E6.toInt()),
                 // Ember.
                 intArrayOf(0xFF1A0000.toInt(), 0xFFC1121F.toInt(), 0xFFFFB703.toInt()),
+                // Two-tone: hot pink with a lime tip.
+                intArrayOf(0xFFFF1493.toInt(), 0xFFFF1493.toInt(), 0xFFB6FF00.toInt()),
+                // Two-tone: blood red into ice.
+                intArrayOf(0xFF8B0000.toInt(), 0xFF8B0000.toInt(), 0xFFA7E8FF.toInt()),
+                // Two-tone: deep purple with acid green on top.
+                intArrayOf(0xFF4B0082.toInt(), 0xFF4B0082.toInt(), 0xFF39FF14.toInt()),
+                // Clash: orange, teal, orange.
+                intArrayOf(0xFFFF6A00.toInt(), 0xFF00B3B3.toInt(), 0xFFFF6A00.toInt()),
+                // Black and white, no colour at all.
+                intArrayOf(0xFF303030.toInt(), 0xFF9E9E9E.toInt(), 0xFFFFFFFF.toInt()),
+                // Pastel sweets: bubblegum, mint, lemon.
+                intArrayOf(0xFFFFB3D9.toInt(), 0xFFB3FFE6.toInt(), 0xFFFFF7A8.toInt()),
             )
 
         /** How often a palette is a dark, muted brown instead of a bright colour. */
