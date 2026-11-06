@@ -161,4 +161,6 @@ object IntegerTable {
     const val MUSIC_MODE_TOP = 0xA144
     /** MusicType.STATS */
     const val MUSIC_MODE_STATS = 0xA145
+    /** MusicType.FAVORITES */
+    const val MUSIC_MODE_FAVORITES = 0xA146
 }

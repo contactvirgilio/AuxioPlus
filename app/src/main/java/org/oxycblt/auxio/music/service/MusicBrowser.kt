@@ -212,6 +212,8 @@ private constructor(
                     MusicType.PLAYLISTS -> homeGenerator.playlists().map { it.toMediaItem(context) }
                     MusicType.TOP -> homeGenerator.top().map { it.song.toMediaItem(context) }
                     MusicType.STATS -> emptyList()
+                    MusicType.FAVORITES ->
+                        homeGenerator.favorites().map { it.toMediaItem(context) }
                 }
         }
 

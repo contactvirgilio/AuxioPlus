@@ -549,6 +549,12 @@
     <string name="set_album_tiles">Album tiles</string>
     <string name="set_album_tiles_desc">Show albums as a grid of covers instead of a list</string>
     <string name="lbl_activity">Activity</string>
+    <string name="lbl_favorites">Favorites</string>
+    <string name="lbl_favorite_add">Add to favorites</string>
+    <string name="lbl_favorite_remove">Remove from favorites</string>
+    <string name="lng_favorite_added">Added to favorites</string>
+    <string name="lng_favorite_removed">Removed from favorites</string>
+    <string name="lng_empty_favorites">No favorites yet. Tap the heart on a song to add it.</string>
     <string name="lbl_range_week">Week</string>
     <string name="lbl_range_month">Month</string>
     <string name="lbl_range_year">Year</string>

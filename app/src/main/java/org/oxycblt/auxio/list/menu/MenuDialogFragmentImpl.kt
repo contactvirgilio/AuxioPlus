@@ -23,6 +23,8 @@ import androidx.fragment.app.activityViewModels
 import androidx.fragment.app.viewModels
 import androidx.navigation.fragment.navArgs
 import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
+import org.oxycblt.auxio.music.FavoritesRepository
 import org.oxycblt.auxio.R
 import org.oxycblt.auxio.databinding.DialogMenuBinding
 import org.oxycblt.auxio.detail.DetailViewModel
@@ -57,8 +59,18 @@ class SongMenuDialogFragment : MenuDialogFragment<Menu.ForSong>() {
     override val parcel
         get() = args.parcel
 
+    @Inject lateinit var favoritesRepository: FavoritesRepository
+
     // Nothing to disable in song menus.
     override fun getDisabledItemIds(menu: Menu.ForSong) = setOf<Int>()
+
+    override fun onMenuInflated(builder: android.view.Menu, menu: Menu.ForSong) {
+        val favorite = favoritesRepository.isFavorite(menu.song.uid)
+        builder.findItem(R.id.action_favorite)?.apply {
+            setIcon(if (favorite) R.drawable.ic_heart_filled_24 else R.drawable.ic_heart_24)
+            setTitle(if (favorite) R.string.lbl_favorite_remove else R.string.lbl_favorite_add)
+        }
+    }
 
     override fun updateMenu(binding: DialogMenuBinding, menu: Menu.ForSong) {
         val context = requireContext()
@@ -79,6 +91,13 @@ class SongMenuDialogFragment : MenuDialogFragment<Menu.ForSong>() {
             R.id.action_queue_add -> {
                 playbackModel.addToQueue(menu.song)
                 requireContext().showToast(R.string.lng_queue_added)
+            }
+            R.id.action_favorite -> {
+                val added = favoritesRepository.toggle(menu.song.uid)
+                requireContext()
+                    .showToast(
+                        if (added) R.string.lng_favorite_added else R.string.lng_favorite_removed
+                    )
             }
             R.id.action_playlist_add -> musicModel.addToPlaylist(menu.song)
             R.id.action_artist_details -> detailModel.showArtist(menu.song)

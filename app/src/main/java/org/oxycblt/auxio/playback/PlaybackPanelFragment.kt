@@ -35,6 +35,8 @@ import androidx.dynamicanimation.animation.SpringForce
 import androidx.fragment.app.activityViewModels
 import androidx.fragment.app.viewModels
 import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
+import org.oxycblt.auxio.music.FavoritesRepository
 import kotlin.math.abs
 import org.oxycblt.auxio.R
 import org.oxycblt.auxio.databinding.FragmentPlaybackPanelBinding
@@ -71,13 +73,14 @@ import timber.log.Timber as L
 class PlaybackPanelFragment :
     ViewBindingFragment<FragmentPlaybackPanelBinding>(),
     Toolbar.OnMenuItemClickListener,
-    StyledSeekBar.Listener {
+    StyledSeekBar.Listener,
+    FavoritesRepository.Listener {
+    @Inject lateinit var favoritesRepository: FavoritesRepository
     private val coverPagerAdapter = CoverPagerAdapter()
     private val playbackModel: PlaybackViewModel by activityViewModels()
     private val detailModel: DetailViewModel by activityViewModels()
     private val listModel: ListViewModel by activityViewModels()
     private val queueModel: QueueViewModel by viewModels()
-    private var equalizerLauncher: ActivityResultLauncher<Intent>? = null
     private var userAwarePagerCallback: UserAwarePagerCallback? = null
     private var currentPagerPosition = 0
 
@@ -89,13 +92,6 @@ class PlaybackPanelFragment :
         savedInstanceState: Bundle?,
     ) {
         super.onBindingCreated(binding, savedInstanceState)
-
-        // AudioEffect expects you to use startActivityForResult with the panel intent. There is no
-        // contract analogue for this intent, so the generic contract is used instead.
-        equalizerLauncher =
-            registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
-                // Nothing to do
-            }
 
         // --- UI SETUP ---
         binding.root.setOnApplyWindowInsetsListener { view, insets ->
@@ -169,6 +165,8 @@ class PlaybackPanelFragment :
             }
         }
 
+        favoritesRepository.addListener(this)
+
         // --- VIEWMODEL SETUP --
         collectImmediately(playbackModel.song, ::updateSong)
         collectImmediately(playbackModel.parent, ::updateParent)
@@ -215,7 +213,7 @@ class PlaybackPanelFragment :
     //    }
 
     override fun onDestroyBinding(binding: FragmentPlaybackPanelBinding) {
-        equalizerLauncher = null
+        favoritesRepository.removeListener(this)
         binding.playbackRepeat.clearPendingIcon()
         binding.playbackSong.isSelected = false
         binding.playbackArtist.isSelected = false
@@ -226,22 +224,13 @@ class PlaybackPanelFragment :
     }
 
     override fun onMenuItemClick(item: MenuItem): Boolean {
-        if (item.itemId == R.id.action_open_equalizer) {
-            // Launch the system equalizer app, if possible.
-            L.d("Launching equalizer")
-            val equalizerIntent =
-                Intent(AudioEffect.ACTION_DISPLAY_AUDIO_EFFECT_CONTROL_PANEL)
-                    // Provide audio session ID so the equalizer can show options for this app
-                    // in particular.
-                    .putExtra(AudioEffect.EXTRA_AUDIO_SESSION, playbackModel.currentAudioSessionId)
-                    // Signal music type so that the equalizer settings are appropriate for
-                    // music playback.
-                    .putExtra(AudioEffect.EXTRA_CONTENT_TYPE, AudioEffect.CONTENT_TYPE_MUSIC)
-            try {
-                requireNotNull(equalizerLauncher) { "Equalizer panel launcher was not available" }
-                    .launch(equalizerIntent)
-            } catch (e: ActivityNotFoundException) {
-                requireContext().showToast(R.string.err_no_app)
+        if (item.itemId == R.id.action_favorite) {
+            playbackModel.song.value?.let {
+                val added = favoritesRepository.toggle(it.uid)
+                requireContext()
+                    .showToast(
+                        if (added) R.string.lng_favorite_added else R.string.lng_favorite_removed
+                    )
             }
             return true
         }
@@ -253,7 +242,20 @@ class PlaybackPanelFragment :
         playbackModel.seekTo(positionDs)
     }
 
+    override fun onFavoritesChanged() {
+        if (binding != null) updateHeart()
+    }
+
+    /** Show the heart filled when the playing song is a favorite. */
+    private fun updateHeart() {
+        val item = requireBinding().playbackToolbar.menu.findItem(R.id.action_favorite) ?: return
+        val favorite = playbackModel.song.value?.let { favoritesRepository.isFavorite(it.uid) } == true
+        item.setIcon(if (favorite) R.drawable.ic_heart_filled_24 else R.drawable.ic_heart_24)
+        item.setTitle(if (favorite) R.string.lbl_favorite_remove else R.string.lbl_favorite_add)
+    }
+
     private fun updateSong(song: Song?) {
+        updateHeart()
         if (song == null) {
             // Nothing to do.
             return

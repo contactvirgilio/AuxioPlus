@@ -2,8 +2,8 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
     <item
-        android:id="@+id/action_open_equalizer"
-        android:icon="@drawable/ic_config_24"
-        android:title="@string/lbl_equalizer"
+        android:id="@+id/action_favorite"
+        android:icon="@drawable/ic_heart_24"
+        android:title="@string/lbl_favorite_add"
         app:showAsAction="always" />
 </menu>

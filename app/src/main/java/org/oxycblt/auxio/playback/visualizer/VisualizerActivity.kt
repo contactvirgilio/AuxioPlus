@@ -35,11 +35,13 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
 import kotlin.math.abs
 import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
 import org.oxycblt.auxio.R
 import org.oxycblt.auxio.databinding.ActivityVisualizerBinding
+import org.oxycblt.auxio.music.FavoritesRepository
 import org.oxycblt.auxio.music.resolve
 import org.oxycblt.auxio.playback.PlaybackViewModel
 import org.oxycblt.auxio.playback.formatDurationMs
@@ -57,6 +59,7 @@ import org.oxycblt.musikr.Song
 @AndroidEntryPoint
 class VisualizerActivity : AppCompatActivity() {
     private val playbackModel: PlaybackViewModel by viewModels()
+    @Inject lateinit var favoritesRepository: FavoritesRepository
     private lateinit var binding: ActivityVisualizerBinding
     private lateinit var audioManager: AudioManager
     private var downX = 0f
@@ -122,6 +125,21 @@ class VisualizerActivity : AppCompatActivity() {
                         playbackModel.togglePlaying()
                         showMessage(getString(R.string.desc_play_pause))
                         return true
+                    }
+
+                    override fun onLongPress(e: MotionEvent) {
+                        if (zone(e.x) != Zone.MIDDLE) return
+                        val song = playbackModel.song.value ?: return
+                        val added = favoritesRepository.toggle(song.uid)
+                        binding.visualizerLevel.performHapticFeedback(
+                            android.view.HapticFeedbackConstants.LONG_PRESS
+                        )
+                        showMessage(
+                            getString(
+                                if (added) R.string.lng_favorite_added
+                                else R.string.lng_favorite_removed
+                            )
+                        )
                     }
 
                     override fun onDoubleTap(e: MotionEvent): Boolean {

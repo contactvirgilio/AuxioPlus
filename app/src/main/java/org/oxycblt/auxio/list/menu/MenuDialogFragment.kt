@@ -58,6 +58,9 @@ abstract class MenuDialogFragment<M : Menu> :
      */
     abstract fun getDisabledItemIds(menu: M): Set<Int>
 
+    /** Called after the menu was inflated, to adjust items such as their titles. */
+    open fun onMenuInflated(builder: android.view.Menu, menu: M) {}
+
     /**
      * Update the displayed information about the currently shown [M].
      *
@@ -116,6 +119,8 @@ abstract class MenuDialogFragment<M : Menu> :
         // depend on the AndroidX Toolbar internal API and hope for the best.
         @SuppressLint("RestrictedApi") val builder = MenuBuilder(requireContext())
         SupportMenuInflater(requireContext()).inflate(casted.res, builder)
+
+        onMenuInflated(builder, casted)
 
         // Disable any menu options as specified by the impl
         val disabledIds = getDisabledItemIds(casted)

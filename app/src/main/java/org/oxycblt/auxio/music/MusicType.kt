@@ -37,7 +37,10 @@ enum class MusicType {
     TOP,
 
     /** Listening time and the most played artists and albums. Only used as a home tab. */
-    STATS;
+    STATS,
+
+    /** The songs marked with a heart. Only used as a home tab. */
+    FAVORITES;
 
     /**
      * The integer representation of this instance.
@@ -54,6 +57,7 @@ enum class MusicType {
                 PLAYLISTS -> IntegerTable.MUSIC_MODE_PLAYLISTS
                 TOP -> IntegerTable.MUSIC_MODE_TOP
                 STATS -> IntegerTable.MUSIC_MODE_STATS
+                FAVORITES -> IntegerTable.MUSIC_MODE_FAVORITES
             }
 
     val nameRes: Int
@@ -66,6 +70,7 @@ enum class MusicType {
                 PLAYLISTS -> R.string.lbl_playlists
                 TOP -> R.string.lbl_top_50
                 STATS -> R.string.lbl_activity
+                FAVORITES -> R.string.lbl_favorites
             }
 
     companion object {
@@ -85,6 +90,7 @@ enum class MusicType {
                 IntegerTable.MUSIC_MODE_PLAYLISTS -> PLAYLISTS
                 IntegerTable.MUSIC_MODE_TOP -> TOP
                 IntegerTable.MUSIC_MODE_STATS -> STATS
+                IntegerTable.MUSIC_MODE_FAVORITES -> FAVORITES
                 else -> null
             }
     }

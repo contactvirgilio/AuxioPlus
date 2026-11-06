@@ -22,12 +22,14 @@ import javax.inject.Inject
 import org.oxycblt.auxio.home.tabs.Tab
 import org.oxycblt.auxio.list.ListSettings
 import org.oxycblt.auxio.list.adapter.UpdateInstructions
+import org.oxycblt.auxio.music.FavoritesRepository
 import org.oxycblt.auxio.music.MusicRepository
 import org.oxycblt.auxio.music.MusicType
 import org.oxycblt.auxio.playback.stats.PlayCountRepository
 import org.oxycblt.musikr.Album
 import org.oxycblt.musikr.Artist
 import org.oxycblt.musikr.Genre
+import org.oxycblt.musikr.Music
 import org.oxycblt.musikr.Playlist
 import org.oxycblt.musikr.Song
 import timber.log.Timber as L
@@ -55,6 +57,9 @@ interface HomeGenerator {
     /** When play counting started, as unix time in milliseconds. */
     fun topSinceMs(): Long
 
+    /** The songs marked as favorites that are in the library, newest first. */
+    fun favorites(): List<Song>
+
     fun tabs(): List<MusicType>
 
     interface Invalidator {
@@ -77,6 +82,7 @@ constructor(
     private val listSettings: ListSettings,
     private val musicRepository: MusicRepository,
     private val playCountRepository: PlayCountRepository,
+    private val favoritesRepository: FavoritesRepository,
 ) : HomeGenerator.Factory {
     override fun create(invalidator: HomeGenerator.Invalidator): HomeGenerator =
         HomeGeneratorImpl(
@@ -85,6 +91,7 @@ constructor(
             listSettings,
             musicRepository,
             playCountRepository,
+            favoritesRepository,
         )
 }
 
@@ -94,17 +101,24 @@ private class HomeGeneratorImpl(
     private val listSettings: ListSettings,
     private val musicRepository: MusicRepository,
     private val playCountRepository: PlayCountRepository,
+    private val favoritesRepository: FavoritesRepository,
 ) :
     HomeGenerator,
     HomeSettings.Listener,
     ListSettings.Listener,
     MusicRepository.UpdateListener,
-    PlayCountRepository.Listener {
+    PlayCountRepository.Listener,
+    FavoritesRepository.Listener {
     override fun attach() {
+        favoritesRepository.addListener(this)
         homeSettings.registerListener(this)
         listSettings.registerListener(this)
         musicRepository.addUpdateListener(this)
         playCountRepository.addListener(this)
+    }
+
+    override fun onFavoritesChanged() {
+        invalidator.invalidateMusic(MusicType.FAVORITES, UpdateInstructions.Diff)
     }
 
     override fun onPlayCountsChanged() {
@@ -160,6 +174,7 @@ private class HomeGeneratorImpl(
             invalidator.invalidateMusic(MusicType.ARTISTS, UpdateInstructions.Diff)
             invalidator.invalidateMusic(MusicType.GENRES, UpdateInstructions.Diff)
             invalidator.invalidateMusic(MusicType.TOP, UpdateInstructions.Diff)
+            invalidator.invalidateMusic(MusicType.FAVORITES, UpdateInstructions.Diff)
         }
 
         if (changes.userLibrary && library != null) {
@@ -169,6 +184,7 @@ private class HomeGeneratorImpl(
     }
 
     override fun release() {
+        favoritesRepository.removeListener(this)
         playCountRepository.removeListener(this)
         musicRepository.removeUpdateListener(this)
         listSettings.unregisterListener(this)
@@ -208,6 +224,13 @@ private class HomeGeneratorImpl(
             .mapNotNull { (uid, entry) -> library.findSong(uid)?.let { it to entry.count } }
             .take(TOP_LIMIT)
             .mapIndexed { i, (song, plays) -> TopSong(song, i + 1, plays) }
+    }
+
+    override fun favorites(): List<Song> {
+        val library = musicRepository.library ?: return emptyList()
+        return favoritesRepository.uids().mapNotNull { uid ->
+            Music.UID.fromString(uid)?.let { library.findSong(it) }
+        }
     }
 
     override fun topSinceMs() = playCountRepository.sinceMs

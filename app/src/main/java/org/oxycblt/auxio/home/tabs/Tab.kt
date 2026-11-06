@@ -62,13 +62,16 @@ sealed class Tab(open val type: MusicType) {
         // fewer tabs and are read as such, with the newer tabs added hidden.
 
         /** The maximum index that a well-formed tab sequence should be. */
-        const val MAX_SEQUENCE_IDX = 6
+        const val MAX_SEQUENCE_IDX = 7
 
         /** The maximum index of a sequence saved before the Top 50 tab existed. */
         private const val LEGACY_MAX_SEQUENCE_IDX = 4
 
         /** The maximum index of a sequence saved before the Activity tab existed. */
         private const val SIX_TABS_MAX_SEQUENCE_IDX = 5
+
+        /** The maximum index of a sequence saved before the Favorites tab existed. */
+        private const val SEVEN_TABS_MAX_SEQUENCE_IDX = 6
 
         /** Marks a sequence as holding six tabs rather than the original five. */
         private const val SEQUENCE_SIX_TABS = 1 shl 28
@@ -93,6 +96,7 @@ sealed class Tab(open val type: MusicType) {
                 MusicType.PLAYLISTS,
                 MusicType.TOP,
                 MusicType.STATS,
+                MusicType.FAVORITES,
             )
 
         /**
@@ -101,7 +105,7 @@ sealed class Tab(open val type: MusicType) {
          * @param tabs The array of [Tab]s to convert
          * @return An integer representation of the [Tab] array
          */
-        fun toIntCode(tabs: Array<Tab>): Int {
+        fun toIntCode(tabs: Array<Tab>): Long {
             // Like when deserializing, make sure there are no duplicate tabs for whatever reason.
             val distinct = tabs.distinctBy { it.type }
             if (tabs.size != distinct.size) {
@@ -110,16 +114,17 @@ sealed class Tab(open val type: MusicType) {
                 )
             }
 
-            var sequence = SEQUENCE_SEVEN_TABS
-            var shift = MAX_SEQUENCE_IDX * 4
-            for (tab in distinct.take(MAX_SEQUENCE_IDX + 1)) {
+            // Eight tabs of four bits fill 32 bits, so this is stored as a Long.
+            var sequence = 0L
+            var shift = (MODE_TABLE.size - 1) * 4
+            for (tab in distinct.take(MODE_TABLE.size)) {
                 val bin =
                     when (tab) {
                         is Visible -> 1.shl(3) or MODE_TABLE.indexOf(tab.type)
                         is Invisible -> MODE_TABLE.indexOf(tab.type)
                     }
 
-                sequence = sequence or bin.shl(shift)
+                sequence = sequence or (bin.toLong() shl shift)
                 shift -= 4
             }
 
@@ -132,11 +137,22 @@ sealed class Tab(open val type: MusicType) {
          * @param intCode The integer representation of the [Tab]s.
          * @return An array of [Tab]s corresponding to the sequence.
          */
+        fun fromLongCode(code: Long): Array<Tab>? {
+            val tabs = mutableListOf<Tab>()
+            for (shift in (0 until MODE_TABLE.size * 4 step 4).reversed()) {
+                val chunk = (code shr shift).toInt() and 0b1111
+                val mode = MODE_TABLE.getOrNull(chunk and 7) ?: continue
+                tabs += if (chunk and 1.shl(3) != 0) Visible(mode) else Invisible(mode)
+            }
+            return finish(tabs)
+        }
+
+        /** Reads a sequence saved by an older version, which fit in an Int. */
         fun fromIntCode(intCode: Int): Array<Tab>? {
             val tabs = mutableListOf<Tab>()
             val maxIdx =
                 when {
-                    intCode and SEQUENCE_SEVEN_TABS != 0 -> MAX_SEQUENCE_IDX
+                    intCode and SEQUENCE_SEVEN_TABS != 0 -> SEVEN_TABS_MAX_SEQUENCE_IDX
                     intCode and SEQUENCE_SIX_TABS != 0 -> SIX_TABS_MAX_SEQUENCE_IDX
                     else -> LEGACY_MAX_SEQUENCE_IDX
                 }
@@ -156,6 +172,10 @@ sealed class Tab(open val type: MusicType) {
                     }
             }
 
+            return finish(tabs)
+        }
+
+        private fun finish(tabs: List<Tab>): Array<Tab>? {
             // Make sure there are no duplicate tabs
             val distinct = tabs.distinctBy { it.type }.toMutableList()
             if (tabs.size != distinct.size) {
@@ -173,7 +193,8 @@ sealed class Tab(open val type: MusicType) {
             // Tabs that didn't exist when the sequence was saved are added at the end, hidden.
             for (mode in MODE_TABLE) {
                 if (distinct.none { it.type == mode }) {
-                    distinct.add(Invisible(mode))
+                    // The Favorites tab was asked for, so it shows up right away.
+                    distinct.add(if (mode == MusicType.FAVORITES) Visible(mode) else Invisible(mode))
                 }
             }
 

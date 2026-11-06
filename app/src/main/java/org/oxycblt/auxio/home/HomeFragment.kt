@@ -44,6 +44,7 @@ import org.oxycblt.auxio.detail.DetailViewModel
 import org.oxycblt.auxio.detail.Show
 import org.oxycblt.auxio.home.list.AlbumListFragment
 import org.oxycblt.auxio.home.list.ArtistListFragment
+import org.oxycblt.auxio.home.list.FavoritesListFragment
 import org.oxycblt.auxio.home.list.GenreListFragment
 import org.oxycblt.auxio.home.list.PlaylistListFragment
 import org.oxycblt.auxio.home.list.SongListFragment
@@ -220,7 +221,8 @@ class HomeFragment : SelectionFragment<FragmentHomeBinding>() {
                         MusicType.PLAYLISTS -> HomeFragmentDirections.sortPlaylists()
                         // The Top 50 is always ordered by plays.
                         MusicType.TOP,
-                        MusicType.STATS -> null
+                        MusicType.STATS,
+                        MusicType.FAVORITES -> null
                     }
                 if (directions != null) {
                     findNavController().navigateSafe(directions)
@@ -277,10 +279,13 @@ class HomeFragment : SelectionFragment<FragmentHomeBinding>() {
                 MusicType.PLAYLISTS -> R.id.home_playlist_recycler
                 MusicType.TOP -> R.id.home_top_recycler
                 MusicType.STATS -> R.id.home_stats_scroll
+                MusicType.FAVORITES -> R.id.home_favorites_recycler
             }
         // The Top 50 is always ordered by plays, so there is nothing to sort.
         binding.homeNormalToolbar.menu.findItem(R.id.action_sort)?.isVisible =
-            tabType != MusicType.TOP && tabType != MusicType.STATS
+            tabType != MusicType.TOP &&
+                tabType != MusicType.STATS &&
+                tabType != MusicType.FAVORITES
     }
 
     private fun handleRecreate(recreate: Unit?) {
@@ -556,6 +561,7 @@ class HomeFragment : SelectionFragment<FragmentHomeBinding>() {
                 MusicType.PLAYLISTS -> PlaylistListFragment()
                 MusicType.TOP -> TopSongListFragment()
                 MusicType.STATS -> StatsFragment()
+                MusicType.FAVORITES -> FavoritesListFragment()
             }
     }
 }

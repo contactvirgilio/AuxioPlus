@@ -53,15 +53,15 @@ class HomeSettingsImpl @Inject constructor(@ApplicationContext context: Context)
     Settings.Impl<HomeSettings.Listener>(context), HomeSettings {
     override var homeTabs: Array<Tab>
         get() =
-            Tab.fromIntCode(
-                sharedPreferences.getInt(
-                    getString(R.string.set_key_home_tabs),
-                    Tab.SEQUENCE_DEFAULT,
-                )
-            ) ?: unlikelyToBeNull(Tab.fromIntCode(Tab.SEQUENCE_DEFAULT))
+            // Older versions saved the tabs as an Int, newer ones need a Long for eight tabs.
+            when (val saved = sharedPreferences.all[getString(R.string.set_key_home_tabs)]) {
+                is Long -> Tab.fromLongCode(saved)
+                is Int -> Tab.fromIntCode(saved)
+                else -> null
+            } ?: unlikelyToBeNull(Tab.fromIntCode(Tab.SEQUENCE_DEFAULT))
         set(value) {
             sharedPreferences.edit {
-                putInt(getString(R.string.set_key_home_tabs), Tab.toIntCode(value))
+                putLong(getString(R.string.set_key_home_tabs), Tab.toIntCode(value))
                 apply()
             }
         }
@@ -84,7 +84,7 @@ class HomeSettingsImpl @Inject constructor(@ApplicationContext context: Context)
             L.d("New tabs: $oldTabs")
 
             sharedPreferences.edit {
-                putInt(getString(R.string.set_key_home_tabs), Tab.toIntCode(oldTabs))
+                putLong(getString(R.string.set_key_home_tabs), Tab.toIntCode(oldTabs))
                 remove(OLD_KEY_LIB_TABS)
             }
         }
