@@ -518,8 +518,14 @@ constructor(
         if (playlist != null) {
             L.d("Adding ${songs.size} songs to $playlist")
             viewModelScope.launch(Dispatchers.IO) {
+                val before = playlist.songs.size
                 musicRepository.addToPlaylist(songs, playlist)
-                _playlistMessage.put(PlaylistMessage.AddSuccess)
+                val added =
+                    musicRepository.library?.findPlaylist(playlist.uid)?.songs?.size ?: before
+                _playlistMessage.put(
+                    if (added > before) PlaylistMessage.AddSuccess
+                    else PlaylistMessage.AlreadyInPlaylist
+                )
             }
         } else {
             L.d("Launching addition dialog for songs=${songs.size}")
@@ -675,6 +681,11 @@ sealed interface PlaylistMessage {
     data object AddSuccess : PlaylistMessage {
         override val stringRes: Int
             get() = R.string.lng_playlist_added
+    }
+
+    data object AlreadyInPlaylist : PlaylistMessage {
+        override val stringRes: Int
+            get() = R.string.lng_playlist_already_added
     }
 
     data object ExportSuccess : PlaylistMessage {

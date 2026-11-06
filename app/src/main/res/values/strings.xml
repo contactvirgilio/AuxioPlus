@@ -208,6 +208,7 @@
     <string name="lng_playlist_exported">Playlist exported</string>
     <string name="lng_playlist_deleted">Playlist deleted</string>
     <string name="lng_playlist_added">Added to playlist</string>
+    <string name="lng_playlist_already_added">Already in the playlist</string>
     <string name="lng_supporters_promo">Donate to the project to get your name added here!</string>
     <!-- As in music library -->
     <string name="lng_search_library">Search your library…</string>

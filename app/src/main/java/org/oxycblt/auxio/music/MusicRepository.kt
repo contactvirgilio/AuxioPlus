@@ -320,7 +320,7 @@ constructor(
     override suspend fun createPlaylist(name: String, songs: List<Song>) {
         val library = synchronized(this) { library ?: return }
         L.d("Creating playlist $name with ${songs.size} songs")
-        val newLibrary = library.createPlaylist(name, songs)
+        val newLibrary = library.createPlaylist(name, songs.distinct())
         synchronized(this) { this.library = newLibrary }
         withContext(Dispatchers.Main) { dispatchLibraryChange(device = false, user = true) }
     }
@@ -343,8 +343,12 @@ constructor(
 
     override suspend fun addToPlaylist(songs: List<Song>, playlist: Playlist) {
         val library = synchronized(this) { library ?: return }
-        L.d("Adding ${songs.size} songs to $playlist")
-        val newLibrary = library.addToPlaylist(playlist, songs)
+        // A song can only be in a playlist once, skip those already there.
+        val present = playlist.songs.toHashSet()
+        val fresh = songs.distinct().filterNot { it in present }
+        L.d("Adding ${fresh.size} of ${songs.size} songs to $playlist")
+        if (fresh.isEmpty()) return
+        val newLibrary = library.addToPlaylist(playlist, fresh)
         synchronized(this) { this.library = newLibrary }
         withContext(Dispatchers.Main) { dispatchLibraryChange(device = false, user = true) }
     }
@@ -352,7 +356,7 @@ constructor(
     override suspend fun rewritePlaylist(playlist: Playlist, songs: List<Song>) {
         val library = synchronized(this) { library ?: return }
         L.d("Rewriting $playlist with ${songs.size} songs")
-        val newLibrary = library.rewritePlaylist(playlist, songs)
+        val newLibrary = library.rewritePlaylist(playlist, songs.distinct())
         synchronized(this) { this.library = newLibrary }
         withContext(Dispatchers.Main) { dispatchLibraryChange(device = false, user = true) }
     }
