@@ -204,7 +204,7 @@ class MusicPreferenceFragment : BasePreferenceFragment(R.xml.preferences_music) 
 
     private fun updateBackupPreferences() {
         findPreference<Preference>(getString(R.string.set_key_backup_folder))?.summary =
-            autoBackup.folderLabel?.let { getString(R.string.set_backup_folder_set, "$it/Auxio") }
+            autoBackup.folderLabel?.let { getString(R.string.set_backup_folder_set, it) }
                 ?: getString(R.string.set_backup_folder_desc)
         findPreference<Preference>(getString(R.string.set_key_backup_now))?.summary =
             when {

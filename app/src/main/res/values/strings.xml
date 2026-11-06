@@ -532,7 +532,7 @@
     </plurals>
     <string name="set_backups">Backups</string>
     <string name="set_backup_folder">Backup folder</string>
-    <string name="set_backup_folder_desc">Pick a folder; an \"Auxio\" folder is created inside it</string>
+    <string name="set_backup_folder_desc">Choose the folder backups are saved in</string>
     <string name="set_backup_folder_set">Saving to %s</string>
     <string name="set_backup_interval">Automatic backups</string>
     <string name="set_backup_off">Off</string>

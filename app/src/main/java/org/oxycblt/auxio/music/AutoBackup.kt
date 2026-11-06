@@ -39,7 +39,7 @@ import org.oxycblt.musikr.playlist.ExternalPlaylistManager
 import timber.log.Timber as L
 
 /**
- * Saves a zip of all playlists and a CSV of the Top 50 into a user-chosen "Auxio" folder, either on
+ * Saves a zip of all playlists and a CSV of the Top 50 into a folder the user chose, either on
  * request or every month or two. There is no background service: a due backup runs the next time
  * the app loads its library.
  */
@@ -55,7 +55,7 @@ constructor(
     private val externalPlaylistManager = ExternalPlaylistManager.from(context)
     private val running = AtomicBoolean(false)
 
-    /** The "Auxio" folder backups are written to, or null if none was chosen yet. */
+    /** The folder backups are written to, or null if none was chosen yet. */
     private val folder: Uri?
         get() =
             preferences
@@ -66,7 +66,8 @@ constructor(
     val folderLabel: String?
         get() =
             folder?.let { DocumentsContract.getDocumentId(it).substringAfter(':', "") }
-                ?.ifEmpty { "Auxio" }
+                ?.substringAfterLast('/')
+                ?.ifEmpty { "Storage" }
 
     /** How many days should pass between backups, or 0 if automatic backups are off. */
     private val intervalDays: Int
@@ -86,8 +87,7 @@ constructor(
         get() = preferences.getBoolean(KEY_FAILED, false)
 
     /**
-     * Use [tree], picked by the user, as the place for backups. An "Auxio" folder is created inside
-     * it, unless the picked folder already is one.
+     * Use [tree], picked by the user, as the place for backups. Files are written straight into it.
      *
      * @return True if the folder is ready to be written to, false otherwise.
      */
@@ -102,24 +102,8 @@ constructor(
                     tree,
                     DocumentsContract.getTreeDocumentId(tree),
                 )
-            val auxio =
-                if (nameOf(root).equals(FOLDER_NAME, ignoreCase = true)) {
-                    root
-                } else {
-                    findChild(tree, root, FOLDER_NAME)
-                        ?: DocumentsContract.createDocument(
-                            context.contentResolver,
-                            root,
-                            DocumentsContract.Document.MIME_TYPE_DIR,
-                            FOLDER_NAME,
-                        )
-                }
-            if (auxio == null) {
-                L.e("Could not create the Auxio folder in $tree")
-                return false
-            }
             preferences.edit {
-                putString(context.getString(R.string.set_key_backup_folder), auxio.toString())
+                putString(context.getString(R.string.set_key_backup_folder), root.toString())
             }
             true
         } catch (e: Exception) {
@@ -199,46 +183,7 @@ constructor(
     private fun createFile(folder: Uri, mime: String, name: String): Uri? =
         DocumentsContract.createDocument(context.contentResolver, folder, mime, name)
 
-    private fun nameOf(document: Uri): String? =
-        context.contentResolver
-            .query(
-                document,
-                arrayOf(DocumentsContract.Document.COLUMN_DISPLAY_NAME),
-                null,
-                null,
-                null,
-            )
-            ?.use { if (it.moveToFirst()) it.getString(0) else null }
-
-    private fun findChild(tree: Uri, parent: Uri, name: String): Uri? {
-        val children =
-            DocumentsContract.buildChildDocumentsUriUsingTree(
-                tree,
-                DocumentsContract.getDocumentId(parent),
-            )
-        context.contentResolver
-            .query(
-                children,
-                arrayOf(
-                    DocumentsContract.Document.COLUMN_DOCUMENT_ID,
-                    DocumentsContract.Document.COLUMN_DISPLAY_NAME,
-                ),
-                null,
-                null,
-                null,
-            )
-            ?.use {
-                while (it.moveToNext()) {
-                    if (it.getString(1).equals(name, ignoreCase = true)) {
-                        return DocumentsContract.buildDocumentUriUsingTree(tree, it.getString(0))
-                    }
-                }
-            }
-        return null
-    }
-
     private companion object {
-        const val FOLDER_NAME = "Auxio"
         const val KEY_LAST = "auxio_backup_last"
         const val KEY_FAILED = "auxio_backup_failed"
         const val DAY_MS = 24L * 60 * 60 * 1000
