@@ -39,7 +39,7 @@ import org.oxycblt.musikr.playlist.ExternalPlaylistManager
 import timber.log.Timber as L
 
 /**
- * Saves a zip of all playlists and a CSV of the Top 50 into a folder the user chose, either on
+ * Saves a zip of all playlists, a playlist file with the favorites and a CSV of the Most Played into a folder the user chose, either on
  * request or every month or two. There is no background service: a due backup runs the next time
  * the app loads its library.
  */
@@ -50,6 +50,7 @@ constructor(
     @ApplicationContext private val context: Context,
     private val musicRepository: MusicRepository,
     private val playCountRepository: PlayCountRepository,
+    private val favoritesRepository: FavoritesRepository,
 ) {
     private val preferences = PreferenceManager.getDefaultSharedPreferences(context)
     private val externalPlaylistManager = ExternalPlaylistManager.from(context)
@@ -144,7 +145,9 @@ constructor(
                             )
                     val csv = createFile(target, "text/csv", "Auxio-top50-$date.csv")
                     val topOk = csv != null && writeTop(csv, library)
-                    playlistsOk && topOk
+                    val m3u = createFile(target, "audio/x-mpegurl", "Auxio-favorites-$date.m3u")
+                    val favoritesOk = m3u != null && writeFavorites(m3u, library)
+                    playlistsOk && topOk && favoritesOk
                 } catch (e: Exception) {
                     L.e("Backup failed: $e")
                     false
@@ -158,6 +161,27 @@ constructor(
         } finally {
             running.set(false)
         }
+    }
+
+    /**
+     * Save the favorites as a playlist file, newest first. Import it as a playlist and use "Add all
+     * to favorites" to restore them.
+     */
+    private fun writeFavorites(uri: Uri, library: Library): Boolean {
+        val songs =
+            favoritesRepository.uids().mapNotNull { uid ->
+                org.oxycblt.musikr.Music.UID.fromString(uid)?.let { library.findSong(it) }
+            }
+        val output = context.contentResolver.openOutputStream(uri, "wt") ?: return false
+        output.bufferedWriter().use { writer ->
+            writer.write("#EXTM3U\n#EXTENC:UTF-8\n#PLAYLIST:Favorites\n")
+            for (song in songs) {
+                writer.write("#EXTINF:${song.durationMs},${song.name.raw}\n")
+                song.artists.firstOrNull()?.name?.raw?.let { writer.write("#EXTART:$it\n") }
+                writer.write("/" + song.path.components.components.joinToString("/") + "\n")
+            }
+        }
+        return true
     }
 
     private fun writeTop(uri: Uri, library: Library): Boolean {
