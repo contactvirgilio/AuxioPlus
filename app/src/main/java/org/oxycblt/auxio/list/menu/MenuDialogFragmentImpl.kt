@@ -67,7 +67,7 @@ class SongMenuDialogFragment : MenuDialogFragment<Menu.ForSong>() {
     override fun onMenuInflated(builder: android.view.Menu, menu: Menu.ForSong) {
         val favorite = favoritesRepository.isFavorite(menu.song.uid)
         builder.findItem(R.id.action_favorite)?.apply {
-            setIcon(if (favorite) R.drawable.ic_heart_filled_24 else R.drawable.ic_heart_24)
+            setIcon(if (favorite) R.drawable.ic_heart_red_24 else R.drawable.ic_heart_24)
             setTitle(if (favorite) R.string.lbl_favorite_remove else R.string.lbl_favorite_add)
         }
     }

@@ -19,6 +19,9 @@
 package org.oxycblt.auxio.list.menu
 
 import android.view.MenuItem
+import androidx.core.content.ContextCompat
+import androidx.core.widget.TextViewCompat
+import org.oxycblt.auxio.R
 import android.view.ViewGroup
 import androidx.recyclerview.widget.DiffUtil
 import org.oxycblt.auxio.databinding.ItemMenuOptionBinding
@@ -60,6 +63,15 @@ class MenuItemViewHolder private constructor(private val binding: ItemMenuOption
         listener.bind(item, this)
         binding.title.apply {
             text = item.title
+            // The favorite heart keeps its own pinkish red instead of the usual icon tint.
+            val keepsColor =
+                item.itemId == R.id.action_favorite &&
+                    item.title?.toString() == context.getString(R.string.lbl_favorite_remove)
+            TextViewCompat.setCompoundDrawableTintList(
+                this,
+                if (keepsColor) null
+                else ContextCompat.getColorStateList(context, R.color.sel_activatable_icon),
+            )
             setCompoundDrawablesRelativeWithIntrinsicBounds(item.icon, null, null, null)
             isEnabled = item.isEnabled
         }
