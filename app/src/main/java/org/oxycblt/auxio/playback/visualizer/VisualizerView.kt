@@ -351,37 +351,21 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
             RARE_PALETTES[random.nextInt(RARE_PALETTES.size)].copyInto(into)
             return
         }
-        // Twelve colour families of 30 degrees each, and brown as a thirteenth, so brown comes up
-        // just as often as any other colour and not more. A palette never starts close to the hue
-        // of the previous one.
-        var brown: Boolean
+        // Everything is random across the whole colour wheel, with no preset colours and no
+        // favourites. Brown is not special: it is dark, muted orange, which turns up as often as
+        // that part of the colour space is big. A palette never starts close to the hue of the
+        // previous one.
         var hue: Float
         var tries = 0
         do {
-            val family = random.nextInt(FAMILIES + 1)
-            brown = family == FAMILIES
-            hue =
-                if (brown) BROWN_HUE + (random.nextFloat() - 0.5f) * 30f
-                else family * 30f + random.nextFloat() * 30f
+            hue = random.nextFloat() * 360f
             val distance = abs(((hue - lastHue + 540f) % 360f) - 180f)
         } while (distance < MIN_HUE_JUMP && ++tries < 50)
-        val sweep: Float
-        val saturation: Float
-        val dark: Float
-        val lift: Float
-        if (brown) {
-            // Brown is just dark, muted orange, which the bright palettes never reach.
-            sweep = (random.nextFloat() - 0.5f) * 30f
-            saturation = 0.4f + random.nextFloat() * 0.3f
-            dark = 0.2f + random.nextFloat() * 0.08f
-            lift = 0.09f + random.nextFloat() * 0.05f
-        } else {
-            // From nearly the same colour all the way to opposites on the colour wheel.
-            sweep = (if (random.nextBoolean()) 1f else -1f) * (15f + random.nextFloat() * 90f)
-            saturation = 0.5f + random.nextFloat() * 0.45f
-            dark = 0.28f + random.nextFloat() * 0.2f
-            lift = 0.08f + random.nextFloat() * 0.1f
-        }
+        // From nearly the same colour all the way to opposites on the colour wheel.
+        val sweep = (if (random.nextBoolean()) 1f else -1f) * (15f + random.nextFloat() * 90f)
+        val saturation = 0.35f + random.nextFloat() * 0.6f
+        val dark = 0.2f + random.nextFloat() * 0.3f
+        val lift = 0.08f + random.nextFloat() * 0.1f
         lastHue = hue
         for (i in 0 until 3) {
             // Every stop gets a little of its own saturation and lightness, so palettes differ in
@@ -427,8 +411,6 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
         const val FADE_BETWEEN_PALETTES_MS = 1500L
 
         const val MIN_HUE_JUMP = 60f
-        const val FAMILIES = 12
-        const val BROWN_HUE = 30f
 
         /** How often a palette is one of the hand-picked [RARE_PALETTES]: about 1 in 1000. */
         const val RARE_CHANCE = 0.001f
