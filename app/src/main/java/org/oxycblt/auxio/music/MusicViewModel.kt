@@ -20,8 +20,10 @@ package org.oxycblt.auxio.music
 
 import android.content.Context
 import android.net.Uri
+import androidx.core.content.edit
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.preference.PreferenceManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.text.SimpleDateFormat
@@ -119,7 +121,28 @@ constructor(
             )
         L.d("Updated statistics: ${_statistics.value}")
         // Do the monthly/bi-monthly backup now that there's a library to back up, if it's due.
-        viewModelScope.launch(Dispatchers.IO) { autoBackup.runIfDue() }
+        viewModelScope.launch(Dispatchers.IO) {
+            removeOldPlaylistDuplicates()
+            autoBackup.runIfDue()
+        }
+    }
+
+    /**
+     * Playlists made before duplicates were prevented may hold a song more than once. Clean them up
+     * a single time.
+     */
+    private suspend fun removeOldPlaylistDuplicates() {
+        val preferences = PreferenceManager.getDefaultSharedPreferences(context)
+        if (preferences.getBoolean(KEY_PLAYLISTS_DEDUPED, false)) return
+        val library = musicRepository.library ?: return
+        for (playlist in library.playlists) {
+            val songs = playlist.songs
+            if (songs.size != songs.distinct().size) {
+                L.d("Removing duplicate songs from $playlist")
+                musicRepository.rewritePlaylist(playlist, songs)
+            }
+        }
+        preferences.edit { putBoolean(KEY_PLAYLISTS_DEDUPED, true) }
     }
 
     override fun onIndexingStateChanged() {
@@ -698,3 +721,5 @@ sealed interface PlaylistMessage {
             get() = R.string.err_export_failed
     }
 }
+
+private const val KEY_PLAYLISTS_DEDUPED = "auxio_playlists_deduped"
