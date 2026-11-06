@@ -26,7 +26,13 @@ enum class VisualizerMode {
     SPECTRUM,
 
     /** The same bars filled with a three-colour gradient that fades between palettes. */
-    SPECTRUM_CYCLE;
+    SPECTRUM_CYCLE,
+
+    /**
+     * The colour cycle spectrum on its own full screen page, opened by tapping the cover. The cover
+     * itself keeps showing the album art.
+     */
+    FULLSCREEN;
 
     /** The integer representation of this instance, as stored in settings. */
     val intCode: Int
@@ -34,6 +40,7 @@ enum class VisualizerMode {
             when (this) {
                 SPECTRUM -> IntegerTable.VISUALIZER_MODE_SPECTRUM
                 SPECTRUM_CYCLE -> IntegerTable.VISUALIZER_MODE_SPECTRUM_CYCLE
+                FULLSCREEN -> IntegerTable.VISUALIZER_MODE_FULLSCREEN
             }
 
     companion object {
@@ -47,6 +54,7 @@ enum class VisualizerMode {
             when (intCode) {
                 IntegerTable.VISUALIZER_MODE_SPECTRUM -> SPECTRUM
                 IntegerTable.VISUALIZER_MODE_SPECTRUM_CYCLE -> SPECTRUM_CYCLE
+                IntegerTable.VISUALIZER_MODE_FULLSCREEN -> FULLSCREEN
                 else -> null
             }
     }

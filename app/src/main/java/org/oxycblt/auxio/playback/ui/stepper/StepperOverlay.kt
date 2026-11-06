@@ -19,6 +19,7 @@
 package org.oxycblt.auxio.playback.ui.stepper
 
 import android.content.Context
+import android.content.Intent
 import android.content.res.ColorStateList
 import android.graphics.Color
 import android.util.AttributeSet
@@ -33,6 +34,8 @@ import com.google.android.material.shape.ShapeAppearanceModel
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 import org.oxycblt.auxio.R
+import org.oxycblt.auxio.playback.visualizer.VisualizerActivity
+import org.oxycblt.auxio.playback.visualizer.VisualizerMode
 import org.oxycblt.auxio.ui.Effect
 import org.oxycblt.auxio.ui.UISettings
 
@@ -137,8 +140,13 @@ class StepperOverlay(context: Context, attrs: AttributeSet?) :
         gestureDetector.onTouchEvent(event) || super.onTouchEvent(event)
 
     override fun onSingleTapConfirmed(e: MotionEvent): Boolean {
-        // A single tap switches between the album cover and the visualizer.
-        uiSettings.showVisualizer = !uiSettings.showVisualizer
+        if (uiSettings.visualizerMode == VisualizerMode.FULLSCREEN) {
+            // The full screen visualizer is its own page, left again with the back gesture.
+            context.startActivity(Intent(context, VisualizerActivity::class.java))
+        } else {
+            // A single tap switches between the album cover and the visualizer.
+            uiSettings.showVisualizer = !uiSettings.showVisualizer
+        }
         return true
     }
 

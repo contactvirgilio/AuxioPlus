@@ -20,6 +20,7 @@ package org.oxycblt.auxio.playback.visualizer
 
 import android.content.Context
 import android.graphics.Canvas
+import android.graphics.Color
 import android.graphics.LinearGradient
 import android.graphics.Paint
 import android.graphics.Rect
@@ -28,6 +29,7 @@ import android.graphics.Shader
 import android.os.SystemClock
 import android.util.AttributeSet
 import android.view.View
+import androidx.core.content.res.use
 import androidx.core.graphics.ColorUtils
 import androidx.core.view.isVisible
 import com.google.android.material.R as MR
@@ -36,6 +38,7 @@ import java.util.Random
 import javax.inject.Inject
 import kotlin.math.max
 import kotlin.math.min
+import org.oxycblt.auxio.R
 import org.oxycblt.auxio.playback.state.PlaybackStateManager
 import org.oxycblt.auxio.ui.UISettings
 import org.oxycblt.auxio.util.getAttrColorCompat
@@ -54,6 +57,11 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
     @Inject lateinit var buffer: VisualizerBuffer
     @Inject lateinit var playbackManager: PlaybackStateManager
 
+    /** Whether this is the full screen one: always showing, colour cycle, on black. */
+    private val alwaysOn =
+        context.obtainStyledAttributes(attrs, R.styleable.VisualizerView).use {
+            it.getBoolean(R.styleable.VisualizerView_alwaysOn, false)
+        }
     private var mode = VisualizerMode.SPECTRUM
     private var intervalMs = 10_000L
     private var acquired = false
@@ -65,7 +73,8 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
     private val samples = FloatArray(FFT_SIZE)
 
     private val backgroundColor =
-        context.getAttrColorCompat(MR.attr.colorSurfaceContainerHigh).defaultColor
+        if (alwaysOn) Color.BLACK
+        else context.getAttrColorCompat(MR.attr.colorSurfaceContainerHigh).defaultColor
     private val primaryColor =
         context.getAttrColorCompat(androidx.appcompat.R.attr.colorPrimary).defaultColor
     private val accentColor = context.getAttrColorCompat(MR.attr.colorTertiary).defaultColor
@@ -90,7 +99,7 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
 
     init {
         // Stay hidden until the setting says otherwise.
-        isVisible = false
+        isVisible = alwaysOn
     }
 
     override fun onAttachedToWindow() {
@@ -110,13 +119,18 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
     }
 
     private fun update() {
-        val newMode = uiSettings.visualizerMode
+        // The full screen mode draws the colour cycle, but on its own page and not on the cover.
+        val setting = uiSettings.visualizerMode
+        val newMode =
+            if (alwaysOn || setting == VisualizerMode.FULLSCREEN) VisualizerMode.SPECTRUM_CYCLE
+            else setting
         if (newMode != mode) {
             mode = newMode
             reset()
         }
         intervalMs = uiSettings.visualizerIntervalSeconds * 1000L
-        val show = uiSettings.showVisualizer
+        val show =
+            alwaysOn || (uiSettings.showVisualizer && setting != VisualizerMode.FULLSCREEN)
         if (show != isVisible) {
             if (show) {
                 alpha = 0f
