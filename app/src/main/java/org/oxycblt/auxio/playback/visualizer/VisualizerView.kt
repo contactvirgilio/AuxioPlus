@@ -237,7 +237,9 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
                 barPaint.color = primaryColor
                 peakPaint.color = accentColor
             }
-            VisualizerMode.SPECTRUM_CYCLE -> {
+            // The view only ever runs as SPECTRUM or SPECTRUM_CYCLE, see update().
+            VisualizerMode.SPECTRUM_CYCLE,
+            VisualizerMode.FULLSCREEN -> {
                 updateCycleColors()
                 // One gradient over the full height, so only loud bars reach the top colour.
                 barPaint.shader =
