@@ -87,7 +87,7 @@
     <string name="lbl_empty_playlist">Empty playlist</string>
     <string name="lbl_imported_playlist">Imported playlist</string>
     <string name="lbl_import_playlists">Import playlists</string>
-    <string name="lbl_top_50">Top 50</string>
+    <string name="lbl_top_50">Most Played</string>
     <!-- As in "Most played since 30 Oct 2026" -->
     <string name="fmt_top_since">Most played since %s</string>
     <string name="lng_empty_top">No plays counted yet. A song counts once you\'ve listened to half of it, or 4 minutes.</string>
@@ -540,7 +540,7 @@
     <string name="set_backup_monthly">Every month</string>
     <string name="set_backup_bimonthly">Every two months</string>
     <string name="set_backup_now">Back up now</string>
-    <string name="set_backup_now_desc">Save all playlists and the Top 50 to the backup folder</string>
+    <string name="set_backup_now_desc">Save all playlists and the Most Played list to the backup folder</string>
     <string name="set_backup_last">Last backup: %s</string>
     <string name="set_backup_running">Backing up…</string>
     <string name="set_backup_need_folder">Pick a backup folder first</string>
