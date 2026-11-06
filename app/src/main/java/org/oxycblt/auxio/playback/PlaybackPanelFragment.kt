@@ -226,11 +226,7 @@ class PlaybackPanelFragment :
     override fun onMenuItemClick(item: MenuItem): Boolean {
         if (item.itemId == R.id.action_favorite) {
             playbackModel.song.value?.let {
-                val added = favoritesRepository.toggle(it.uid)
-                requireContext()
-                    .showToast(
-                        if (added) R.string.lng_favorite_added else R.string.lng_favorite_removed
-                    )
+                favoritesRepository.toggle(it.uid)
             }
             return true
         }

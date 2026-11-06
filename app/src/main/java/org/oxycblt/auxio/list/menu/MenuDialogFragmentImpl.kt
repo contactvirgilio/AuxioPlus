@@ -93,11 +93,7 @@ class SongMenuDialogFragment : MenuDialogFragment<Menu.ForSong>() {
                 requireContext().showToast(R.string.lng_queue_added)
             }
             R.id.action_favorite -> {
-                val added = favoritesRepository.toggle(menu.song.uid)
-                requireContext()
-                    .showToast(
-                        if (added) R.string.lng_favorite_added else R.string.lng_favorite_removed
-                    )
+                favoritesRepository.toggle(menu.song.uid)
             }
             R.id.action_playlist_add -> musicModel.addToPlaylist(menu.song)
             R.id.action_artist_details -> detailModel.showArtist(menu.song)

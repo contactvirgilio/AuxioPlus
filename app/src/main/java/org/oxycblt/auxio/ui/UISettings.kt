@@ -104,9 +104,10 @@ class UISettingsImpl @Inject constructor(@ApplicationContext context: Context) :
 
     override val visualizerIntervalSeconds: Int
         get() =
-            sharedPreferences
-                .getInt(getString(R.string.set_key_visualizer_interval), 10)
-                .coerceIn(1, 3600)
+            sharedPreferences.getInt(getString(R.string.set_key_visualizer_interval), 60).let {
+                // 0 is every song, the rest are seconds. Anything else is an old setting.
+                if (it in setOf(0, 60, 150, 300)) it else 60
+            }
 
     override fun migrate() {
         // The oscilloscope and spectrogram visualizers were removed, fall back to the default.
@@ -117,6 +118,16 @@ class UISettingsImpl @Inject constructor(@ApplicationContext context: Context) :
         ) {
             L.d("Resetting removed visualizer mode")
             sharedPreferences.edit { remove(visualizerKey) }
+        }
+
+        // The colour change intervals shorter than a minute were removed.
+        val intervalKey = getString(R.string.set_key_visualizer_interval)
+        if (
+            sharedPreferences.contains(intervalKey) &&
+                sharedPreferences.getInt(intervalKey, 60) !in setOf(0, 60, 150, 300)
+        ) {
+            L.d("Resetting removed colour change interval")
+            sharedPreferences.edit { remove(intervalKey) }
         }
 
         if (sharedPreferences.contains(OLD_KEY_ACCENT3)) {

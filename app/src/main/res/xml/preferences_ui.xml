@@ -31,7 +31,7 @@
         app:title="@string/set_visualizer_mode" />
 
     <org.oxycblt.auxio.settings.ui.IntListPreference
-        app:defaultValue="10"
+        app:defaultValue="60"
         app:dependency="auxio_visualizer_mode"
         app:entries="@array/entries_visualizer_interval"
         app:entryValues="@array/values_visualizer_interval"

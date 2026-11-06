@@ -63,7 +63,7 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
             it.getBoolean(R.styleable.VisualizerView_alwaysOn, false)
         }
     private var mode = VisualizerMode.SPECTRUM
-    private var intervalMs = 10_000L
+    private var intervalMs = 60_000L
     private var acquired = false
     private var running = false
     private var lastFrameNanos = 0L
@@ -127,6 +127,7 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
             mode = newMode
             reset()
         }
+        // 0 means a new colour scheme for every song.
         intervalMs = uiSettings.visualizerIntervalSeconds * 1000L
         val show = alwaysOn || uiSettings.showVisualizer
         if (show != isVisible) {
@@ -289,21 +290,50 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
             paletteStart = SystemClock.elapsedRealtime()
             paletteReady = true
         }
-        val interval = max(1000L, intervalMs)
-        val fade = min(FADE_BETWEEN_PALETTES_MS, interval / 2)
         val now = SystemClock.elapsedRealtime()
-        while (now - paletteStart >= interval) {
-            paletteStart += interval
-            val done = currentPalette
-            currentPalette = nextPalette
-            nextPalette = done
-            randomPalette(nextPalette)
+        val t: Float
+        if (intervalMs <= 0L) {
+            // Every song: hold the palette until the song changes, then fade into the next one.
+            val song = playbackManager.currentSong?.uid
+            if (song != lastSong) {
+                val firstSong = lastSong == null
+                lastSong = song
+                if (!firstSong && song != null) {
+                    if (songFadeStart != 0L) rotatePalettes()
+                    songFadeStart = now
+                }
+            }
+            if (songFadeStart != 0L && now - songFadeStart >= FADE_BETWEEN_PALETTES_MS) {
+                rotatePalettes()
+                songFadeStart = 0L
+            }
+            t =
+                if (songFadeStart == 0L) 0f
+                else (now - songFadeStart).toFloat() / FADE_BETWEEN_PALETTES_MS
+        } else {
+            songFadeStart = 0L
+            val interval = max(1000L, intervalMs)
+            val fade = min(FADE_BETWEEN_PALETTES_MS, interval / 2)
+            while (now - paletteStart >= interval) {
+                paletteStart += interval
+                rotatePalettes()
+            }
+            val within = now - paletteStart
+            t =
+                if (within > interval - fade) (within - (interval - fade)).toFloat() / fade
+                else 0f
         }
-        val within = now - paletteStart
-        val t = if (within > interval - fade) (within - (interval - fade)).toFloat() / fade else 0f
         for (i in 0 until 3) {
             cycleColors[i] = ColorUtils.blendARGB(currentPalette[i], nextPalette[i], t)
         }
+    }
+
+    /** The next palette becomes the current one, and a new random next one is picked. */
+    private fun rotatePalettes() {
+        val done = currentPalette
+        currentPalette = nextPalette
+        nextPalette = done
+        randomPalette(nextPalette)
     }
 
     /**
@@ -368,6 +398,8 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
         lateinit var currentPalette: IntArray
         lateinit var nextPalette: IntArray
         var paletteStart = 0L
+        var lastSong: org.oxycblt.musikr.Music.UID? = null
+        var songFadeStart = 0L
 
         const val FFT_SIZE = 4096
         const val FLOOR_DB = -70f
