@@ -19,6 +19,7 @@
 package org.oxycblt.auxio.home.list
 
 import android.os.Bundle
+import android.os.SystemClock
 import android.view.LayoutInflater
 import androidx.core.view.isVisible
 import androidx.lifecycle.lifecycleScope
@@ -54,6 +55,7 @@ class StatsFragment :
     @Inject lateinit var playCountRepository: PlayCountRepository
     @Inject lateinit var musicRepository: MusicRepository
     private var range = Range.MONTH
+    private var lastRefreshAt = 0L
 
     private enum class Range {
         WEEK,
@@ -102,11 +104,12 @@ class StatsFragment :
     override fun onResume() {
         super.onResume()
         // The library may have changed while another screen was on top.
-        if (binding != null) refresh()
+        // Opening the tab already refreshed a moment ago, don't do the same work twice.
+        if (binding != null && SystemClock.elapsedRealtime() - lastRefreshAt > 1000) refresh()
     }
 
     override fun onPlayCountsChanged() {
-        if (binding != null) refresh()
+        if (binding != null && isResumed) refresh()
     }
 
     private fun chipFor(range: Range) =
@@ -119,6 +122,7 @@ class StatsFragment :
 
     private fun refresh() {
         val chosen = range
+        lastRefreshAt = SystemClock.elapsedRealtime()
         viewLifecycleOwner.lifecycleScope.launch {
             val stats = withContext(Dispatchers.Default) { compute(chosen) }
             if (binding != null && chosen == range) show(stats)
@@ -170,6 +174,7 @@ class StatsFragment :
         val playsBySong = mutableMapOf<Song, Int>()
         val bars = FloatArray(bucketCount)
         val songCache = mutableMapOf<String, Song?>()
+        val at = Calendar.getInstance()
         for ((uidString, playedAt) in playCountRepository.playsSince(startMs)) {
             val song =
                 songCache.getOrPut(uidString) {
@@ -178,7 +183,7 @@ class StatsFragment :
             if (range != Range.ALL) {
                 playsBySong[song] = (playsBySong[song] ?: 0) + 1
             }
-            val at = Calendar.getInstance().apply { timeInMillis = playedAt }
+            at.timeInMillis = playedAt
             val bucket =
                 if (bucketsAreMonths) {
                     at.get(Calendar.YEAR) * 12 + at.get(Calendar.MONTH) - startMonths

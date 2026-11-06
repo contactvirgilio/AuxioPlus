@@ -88,6 +88,8 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
     private val barPaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val peakPaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val cycleColors = IntArray(3)
+    private val gradientColors = IntArray(3)
+    private var gradientHeight = -1f
     private val gradientStops = floatArrayOf(0f, 0.55f, 1f)
     private val random = Random()
     private var lastHue = random.nextFloat() * 360f
@@ -177,6 +179,11 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
         }
 
         val now = System.nanoTime()
+        // 30 frames a second is plenty for bars and halves the FFT work.
+        if (lastFrameNanos != 0L && now - lastFrameNanos < MIN_FRAME_NANOS) {
+            postOnAnimation(frame)
+            return
+        }
         val dt =
             if (lastFrameNanos == 0L) 1f / 60f
             else ((now - lastFrameNanos) / 1_000_000_000f).coerceIn(0f, MAX_FRAME_TIME)
@@ -235,8 +242,25 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
             VisualizerMode.SPECTRUM_CYCLE -> {
                 updateCycleColors()
                 // One gradient over the full height, so only loud bars reach the top colour.
-                barPaint.shader =
-                    LinearGradient(0f, h, 0f, 0f, cycleColors, gradientStops, Shader.TileMode.CLAMP)
+                // The gradient is only rebuilt when the colours or the height changed.
+                if (
+                    barPaint.shader == null ||
+                        gradientHeight != h ||
+                        !cycleColors.contentEquals(gradientColors)
+                ) {
+                    cycleColors.copyInto(gradientColors)
+                    gradientHeight = h
+                    barPaint.shader =
+                        LinearGradient(
+                            0f,
+                            h,
+                            0f,
+                            0f,
+                            gradientColors.copyOf(),
+                            gradientStops,
+                            Shader.TileMode.CLAMP,
+                        )
+                }
                 peakPaint.color = cycleColors[2]
             }
         }
@@ -343,6 +367,7 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
         const val PEAK_HOLD_SECONDS = 0.35f
         const val PEAK_GRAVITY = 3f
         const val MAX_FRAME_TIME = 0.1f
+        const val MIN_FRAME_NANOS = 28_000_000L
         const val IDLE_CHECK_MS = 250L
         const val FADE_MS = 150L
         const val FADE_BETWEEN_PALETTES_MS = 1500L
