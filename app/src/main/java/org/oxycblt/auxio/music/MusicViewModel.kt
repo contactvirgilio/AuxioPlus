@@ -296,9 +296,15 @@ constructor(
             L.d("Exporting ${playlists.size} playlists to $uri")
             val config = ExportConfig(absolute = false, windowsPaths = false)
             val exported =
-                externalPlaylistManager.exportAll(playlists, uri, config) { done, total ->
-                    _playlistBackupState.value = PlaylistBackupState.Running(operation, done, total)
-                }
+                externalPlaylistManager.exportAll(
+                    playlists,
+                    uri,
+                    config,
+                    onProgress = { done, total ->
+                        _playlistBackupState.value =
+                            PlaylistBackupState.Running(operation, done, total)
+                    },
+                )
             _playlistBackupState.value =
                 if (exported) {
                     null
