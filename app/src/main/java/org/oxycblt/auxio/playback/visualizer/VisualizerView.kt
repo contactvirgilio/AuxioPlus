@@ -179,11 +179,6 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
         }
 
         val now = System.nanoTime()
-        // 30 frames a second is plenty for bars and halves the FFT work.
-        if (lastFrameNanos != 0L && now - lastFrameNanos < MIN_FRAME_NANOS) {
-            postOnAnimation(frame)
-            return
-        }
         val dt =
             if (lastFrameNanos == 0L) 1f / 60f
             else ((now - lastFrameNanos) / 1_000_000_000f).coerceIn(0f, MAX_FRAME_TIME)
@@ -367,7 +362,6 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
         const val PEAK_HOLD_SECONDS = 0.35f
         const val PEAK_GRAVITY = 3f
         const val MAX_FRAME_TIME = 0.1f
-        const val MIN_FRAME_NANOS = 28_000_000L
         const val IDLE_CHECK_MS = 250L
         const val FADE_MS = 150L
         const val FADE_BETWEEN_PALETTES_MS = 1500L
