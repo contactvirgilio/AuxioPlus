@@ -177,7 +177,9 @@ constructor(
             writer.write("#EXTM3U\n#EXTENC:UTF-8\n#PLAYLIST:Favorites\n")
             for (song in songs) {
                 writer.write("#EXTINF:${song.durationMs},${song.name.raw}\n")
-                song.artists.firstOrNull()?.name?.raw?.let { writer.write("#EXTART:$it\n") }
+                (song.artists.firstOrNull()?.name as? org.oxycblt.musikr.tag.Name.Known)?.let {
+                    writer.write("#EXTART:${it.raw}\n")
+                }
                 writer.write("/" + song.path.components.components.joinToString("/") + "\n")
             }
         }
