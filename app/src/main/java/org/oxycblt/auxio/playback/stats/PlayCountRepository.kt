@@ -124,6 +124,43 @@ class PlayCountRepository @Inject constructor(@ApplicationContext context: Conte
     fun playsSince(sinceMs: Long): List<Pair<String, Long>> =
         synchronized(lock) { database.readLog(sinceMs) }
 
+    /**
+     * Merge plays from a backup into the current ones. Plays already in the log are skipped, and
+     * the larger of the two counts is kept for every song.
+     *
+     * @param restoredCounts Total play counts by song UID string.
+     * @param restoredPlays Plays as song UID strings and when they were played.
+     * @return How many plays were added to the log.
+     */
+    fun restore(
+        restoredCounts: Map<String, Entry>,
+        restoredPlays: List<Pair<String, Long>>,
+    ): Int {
+        val added: Int
+        synchronized(lock) {
+            val known = database.readLog(0).toHashSet()
+            val fresh = restoredPlays.filter { known.add(it) }
+            database.logAll(fresh)
+            added = fresh.size
+            val merged = counts.toMutableMap()
+            for ((uid, entry) in restoredCounts) {
+                val current = merged[uid]
+                val result =
+                    if (current == null) entry
+                    else
+                        Entry(
+                            maxOf(current.count, entry.count),
+                            maxOf(current.lastPlayedMs, entry.lastPlayedMs),
+                        )
+                merged[uid] = result
+                database.write(uid, result)
+            }
+            counts = merged
+        }
+        notifyListeners()
+        return added
+    }
+
     /** Every song's total play count, including plays from before the play log existed. */
     fun allCounts(): Map<String, Entry> = counts
 
@@ -173,6 +210,28 @@ class PlayCountRepository @Inject constructor(@ApplicationContext context: Conte
                 writableDatabase.insert(LOG_TABLE, null, values)
             } catch (e: Exception) {
                 L.e("Could not log play: $e")
+            }
+        }
+
+        fun logAll(plays: List<Pair<String, Long>>) {
+            val db = writableDatabase
+            try {
+                db.beginTransaction()
+                for ((uid, playedAt) in plays) {
+                    val values =
+                        ContentValues().apply {
+                            put(COLUMN_UID, uid)
+                            put(COLUMN_PLAYED_AT, playedAt)
+                        }
+                    db.insert(LOG_TABLE, null, values)
+                }
+                db.setTransactionSuccessful()
+            } catch (e: Exception) {
+                L.e("Could not restore play log: $e")
+            } finally {
+                try {
+                    db.endTransaction()
+                } catch (e: Exception) {}
             }
         }
 

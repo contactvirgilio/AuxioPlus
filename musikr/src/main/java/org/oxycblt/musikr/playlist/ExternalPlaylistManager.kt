@@ -76,6 +76,7 @@ interface ExternalPlaylistManager {
         uri: Uri,
         config: ExportConfig,
         onProgress: (done: Int, total: Int) -> Unit = { _, _ -> },
+        extras: (ZipOutputStream) -> Unit = {},
     ): Boolean
 
     /**
@@ -207,6 +208,7 @@ private class ExternalPlaylistManagerImpl(
         uri: Uri,
         config: ExportConfig,
         onProgress: (done: Int, total: Int) -> Unit,
+        extras: (ZipOutputStream) -> Unit,
     ): Boolean {
         val filePath = documentPathFactory.unpackDocumentUri(uri) ?: return false
         // Every M3U sits at the root of the zip, so relative paths are made relative to the
@@ -231,6 +233,8 @@ private class ExternalPlaylistManagerImpl(
                         zip.closeEntry()
                         onProgress(index + 1, playlists.size)
                     }
+                    // Anything else the caller wants to keep in the same zip.
+                    extras(zip)
                 }
                 true
             } catch (e: Exception) {

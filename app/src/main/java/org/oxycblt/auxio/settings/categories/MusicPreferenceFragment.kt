@@ -39,7 +39,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.oxycblt.auxio.R
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import org.oxycblt.auxio.music.AutoBackup
+import org.oxycblt.auxio.music.BackupRestorer
 import org.oxycblt.auxio.music.MusicViewModel
 import org.oxycblt.auxio.music.PlaylistBackupState
 import org.oxycblt.auxio.settings.BasePreferenceFragment
@@ -61,23 +63,12 @@ class MusicPreferenceFragment : BasePreferenceFragment(R.xml.preferences_music) 
     private val musicModel: MusicViewModel by activityViewModels()
     @Inject lateinit var imageLoader: ImageLoader
     @Inject lateinit var autoBackup: AutoBackup
+    @Inject lateinit var backupRestorer: BackupRestorer
     private var backupFolderLauncher: ActivityResultLauncher<Uri?>? = null
-    private var exportPlaylistsLauncher: ActivityResultLauncher<String>? = null
     private var importPlaylistsLauncher: ActivityResultLauncher<Array<String>>? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val createZip =
-            ActivityResultContracts.CreateDocument(ExternalPlaylistManager.ZIP_MIME_TYPE)
-        exportPlaylistsLauncher =
-            registerForActivityResult(createZip) { uri ->
-                if (uri == null) {
-                    L.w("No URI returned from file picker")
-                    return@registerForActivityResult
-                }
-                L.d("Exporting all playlists to $uri")
-                musicModel.exportAllPlaylists(uri)
-            }
         backupFolderLauncher =
             registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
                 if (uri == null) {
@@ -103,8 +94,8 @@ class MusicPreferenceFragment : BasePreferenceFragment(R.xml.preferences_music) 
                     L.w("No URIs returned from file picker")
                     return@registerForActivityResult
                 }
-                L.d("Importing playlists from ${uris.size} files")
-                musicModel.importPlaylistFiles(uris, nameSingleFile = false)
+                L.d("Restoring from ${uris.size} files")
+                startRestore(uris)
             }
     }
 
@@ -150,19 +141,6 @@ class MusicPreferenceFragment : BasePreferenceFragment(R.xml.preferences_music) 
                     true
                 }
         }
-        if (preference.key == getString(R.string.set_key_export_playlists)) {
-            L.d("Configuring export playlists setting")
-            preference.onPreferenceClickListener =
-                Preference.OnPreferenceClickListener {
-                    if (musicModel.playlistBackupState.value !is PlaylistBackupState.Running) {
-                        requireNotNull(exportPlaylistsLauncher) {
-                                "Export playlists launcher was not available"
-                            }
-                            .launch(musicModel.newPlaylistBackupName())
-                    }
-                    true
-                }
-        }
         if (preference.key == getString(R.string.set_key_import_playlists)) {
             L.d("Configuring import playlists setting")
             preference.onPreferenceClickListener =
@@ -171,7 +149,7 @@ class MusicPreferenceFragment : BasePreferenceFragment(R.xml.preferences_music) 
                         requireNotNull(importPlaylistsLauncher) {
                                 "Import playlists launcher was not available"
                             }
-                            .launch(ExternalPlaylistManager.IMPORT_MIME_TYPES)
+                            .launch(ExternalPlaylistManager.IMPORT_MIME_TYPES + RESTORE_EXTRA_MIME_TYPES)
                     }
                     true
                 }
@@ -233,22 +211,97 @@ class MusicPreferenceFragment : BasePreferenceFragment(R.xml.preferences_music) 
         }
     }
 
+    private fun startRestore(uris: List<Uri>) {
+        lifecycleScope.launch {
+            val found = withContext(Dispatchers.IO) { backupRestorer.read(uris) }
+            if (found.isEmpty) {
+                Toast.makeText(requireContext(), R.string.err_restore_nothing, Toast.LENGTH_SHORT)
+                    .show()
+            } else if (found.choice) {
+                showRestoreChoice(found)
+            } else {
+                runRestore(found, playlists = true, favorites = true, activity = true)
+            }
+        }
+    }
+
+    /** A backup zip was picked: restore everything, or only some parts of it. */
+    private fun showRestoreChoice(found: BackupRestorer.Contents) {
+        val labels = mutableListOf<String>()
+        val parts = mutableListOf<Int>()
+        if (found.playlistUris.isNotEmpty()) {
+            labels += getString(R.string.set_restore_playlists, found.playlists)
+            parts += PART_PLAYLISTS
+        }
+        if (found.favorites.isNotEmpty()) {
+            labels += getString(R.string.set_restore_favorites, found.favorites.size)
+            parts += PART_FAVORITES
+        }
+        found.activity?.let {
+            labels += getString(R.string.set_restore_activity, it.plays.size)
+            parts += PART_ACTIVITY
+        }
+        val checked = BooleanArray(labels.size) { true }
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle(R.string.set_restore_choose)
+            .setMultiChoiceItems(labels.toTypedArray(), checked) { _, which, isChecked ->
+                checked[which] = isChecked
+            }
+            .setPositiveButton(R.string.set_restore_go) { _, _ ->
+                val chosen = parts.filterIndexed { i, _ -> checked[i] }
+                runRestore(
+                    found,
+                    playlists = PART_PLAYLISTS in chosen,
+                    favorites = PART_FAVORITES in chosen,
+                    activity = PART_ACTIVITY in chosen,
+                )
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+
+    private fun runRestore(
+        found: BackupRestorer.Contents,
+        playlists: Boolean,
+        favorites: Boolean,
+        activity: Boolean,
+    ) {
+        if (playlists && found.playlistUris.isNotEmpty()) {
+            // Shows its own progress on the restore button.
+            musicModel.importPlaylistFiles(found.playlistUris, nameSingleFile = false)
+        }
+        val wantsFavorites = favorites && found.favorites.isNotEmpty()
+        val wantsActivity = activity && found.activity != null
+        if (!wantsFavorites && !wantsActivity) return
+        val context = requireContext().applicationContext
+        lifecycleScope.launch {
+            val (addedFavorites, addedPlays) =
+                withContext(Dispatchers.IO) {
+                    val f = if (wantsFavorites) backupRestorer.restoreFavorites(found.favorites) else 0
+                    val p =
+                        found.activity?.takeIf { wantsActivity }?.let(backupRestorer::restoreActivity)
+                            ?: 0
+                    f to p
+                }
+            Toast.makeText(
+                    context,
+                    context.getString(R.string.fmt_restored, addedFavorites, addedPlays),
+                    Toast.LENGTH_LONG,
+                )
+                .show()
+        }
+    }
+
     private fun updatePlaylistBackupState(state: PlaylistBackupState?) {
-        val exportPreference =
-            findPreference<ProgressPreference>(getString(R.string.set_key_export_playlists))
         val importPreference =
             findPreference<ProgressPreference>(getString(R.string.set_key_import_playlists))
-        if (exportPreference == null || importPreference == null) return
+                ?: return
 
-        // Only one export/import can run at a time.
+        // Only one restore can run at a time.
         val running = state is PlaylistBackupState.Running
-        val operation = state?.operation
-        updateProgressPreference(exportPreference, PlaylistBackupState.Operation.EXPORT, state)
         updateProgressPreference(importPreference, PlaylistBackupState.Operation.IMPORT, state)
-        exportPreference.isSelectable = !running
         importPreference.isSelectable = !running
-        exportPreference.isEnabled = !running || operation == PlaylistBackupState.Operation.EXPORT
-        importPreference.isEnabled = !running || operation == PlaylistBackupState.Operation.IMPORT
+        importPreference.isEnabled = !running || state?.operation == PlaylistBackupState.Operation.IMPORT
     }
 
     private fun updateProgressPreference(
@@ -278,5 +331,12 @@ class MusicPreferenceFragment : BasePreferenceFragment(R.xml.preferences_music) 
                 preference.showError(getString(error))
             }
         }
+    }
+
+    private companion object {
+        const val PART_PLAYLISTS = 1
+        const val PART_FAVORITES = 2
+        const val PART_ACTIVITY = 3
+        val RESTORE_EXTRA_MIME_TYPES = arrayOf("text/csv", "text/plain", "text/comma-separated-values")
     }
 }

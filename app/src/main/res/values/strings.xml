@@ -312,8 +312,8 @@
     <string name="set_square_covers_desc">Crop all album covers to a 1:1 aspect ratio</string>
     <string name="set_export_playlists">Export all playlists</string>
     <string name="set_export_playlists_desc">Save every playlist to one zip file, with paths relative to where it is saved</string>
-    <string name="set_import_playlists">Import all playlists</string>
-    <string name="set_import_playlists_desc">Restore playlists from zip files or M3U files. Playlists with the same name are replaced</string>
+    <string name="set_import_playlists">Restore from backup</string>
+    <string name="set_import_playlists_desc">Pick a backup zip, or a single playlist, favorites or activity file</string>
     <string name="set_exporting_playlists">Exporting playlists…</string>
     <string name="set_importing_playlists">Importing playlists…</string>
 
@@ -539,7 +539,14 @@
     <string name="set_backup_monthly">Every month</string>
     <string name="set_backup_bimonthly">Every two months</string>
     <string name="set_backup_now">Back up now</string>
-    <string name="set_backup_now_desc">Save all playlists, favorites and the Most Played list to the backup folder</string>
+    <string name="set_backup_now_desc">Save playlists, favorites and activity as one zip in the backup folder</string>
+    <string name="set_restore_choose">Restore which parts?</string>
+    <string name="set_restore_playlists">Playlists (%d)</string>
+    <string name="set_restore_favorites">Favorites (%d songs)</string>
+    <string name="set_restore_activity">Activity and Most Played (%d plays)</string>
+    <string name="set_restore_go">Restore</string>
+    <string name="fmt_restored">Restored %1$d favorites and %2$d plays</string>
+    <string name="err_restore_nothing">Nothing to restore in that file</string>
     <string name="set_backup_last">Last backup: %s</string>
     <string name="set_backup_running">Backing up…</string>
     <string name="set_backup_need_folder">Pick a backup folder first</string>

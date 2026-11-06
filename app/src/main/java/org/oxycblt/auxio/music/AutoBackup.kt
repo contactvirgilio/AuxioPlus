@@ -28,6 +28,8 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import java.util.zip.ZipEntry
+import java.util.zip.ZipOutputStream
 import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -39,7 +41,7 @@ import org.oxycblt.musikr.playlist.ExternalPlaylistManager
 import timber.log.Timber as L
 
 /**
- * Saves a zip of all playlists, a playlist file with the favorites and a CSV of the Most Played into a folder the user chose, either on
+ * Saves one zip with all playlists, the favorites and the activity (play counts and history) into a folder the user chose, either on
  * request or every month or two. There is no background service: a due backup runs the next time
  * the app loads its library.
  */
@@ -135,19 +137,14 @@ constructor(
             val ok =
                 try {
                     val playlists = library.playlists.sortedBy { it.name.raw.lowercase() }
-                    val zip = createFile(target, "application/zip", "Auxio-playlists-$date.zip")
-                    val playlistsOk =
-                        zip != null &&
-                            externalPlaylistManager.exportAll(
-                                playlists,
-                                zip,
-                                ExportConfig(absolute = false, windowsPaths = false),
-                            )
-                    val csv = createFile(target, "text/csv", "Auxio-top50-$date.csv")
-                    val topOk = csv != null && writeTop(csv, library)
-                    val m3u = createFile(target, "audio/x-mpegurl", "Auxio-favorites-$date.m3u")
-                    val favoritesOk = m3u != null && writeFavorites(m3u, library)
-                    playlistsOk && topOk && favoritesOk
+                    val zip = createFile(target, "application/zip", "Auxio-backup-$date.zip")
+                    zip != null &&
+                        externalPlaylistManager.exportAll(
+                            playlists,
+                            zip,
+                            ExportConfig(absolute = false, windowsPaths = false),
+                            extras = { out -> writeExtras(out, library) },
+                        )
                 } catch (e: Exception) {
                     L.e("Backup failed: $e")
                     false
@@ -163,48 +160,50 @@ constructor(
         }
     }
 
-    /**
-     * Save the favorites as a playlist file, newest first. Import it as a playlist and use "Add all
-     * to favorites" to restore them.
-     */
-    private fun writeFavorites(uri: Uri, library: Library): Boolean {
-        val songs =
-            favoritesRepository.uids().mapNotNull { uid ->
-                org.oxycblt.musikr.Music.UID.fromString(uid)?.let { library.findSong(it) }
-            }
-        val output = context.contentResolver.openOutputStream(uri, "wt") ?: return false
-        output.bufferedWriter().use { writer ->
-            writer.write("#EXTM3U\n#EXTENC:UTF-8\n#PLAYLIST:Favorites\n")
-            for (song in songs) {
-                writer.write("#EXTINF:${song.durationMs},${song.name.raw}\n")
-                (song.artists.firstOrNull()?.name as? org.oxycblt.musikr.tag.Name.Known)?.let {
-                    writer.write("#EXTART:${it.raw}\n")
-                }
-                writer.write("/" + song.path.components.components.joinToString("/") + "\n")
+    /** Add the favorites and the activity to the backup zip. */
+    private fun writeExtras(zip: ZipOutputStream, library: Library) {
+        fun pathOf(song: org.oxycblt.musikr.Song) =
+            "/" + song.path.components.components.joinToString("/")
+
+        // Favorites, newest first, one song path per line with the title as a comment.
+        zip.putNextEntry(ZipEntry(BackupRestorer.FAVORITES_ENTRY))
+        val favorites = StringBuilder("${BackupRestorer.FAVORITES_HEADER} 1\n")
+        for (uid in favoritesRepository.uids()) {
+            val song = org.oxycblt.musikr.Music.UID.fromString(uid)?.let { library.findSong(it) }
+            if (song != null) {
+                favorites.append("# ").append(song.name.resolve(context).replace('\n', ' ')).append('\n')
+                favorites.append(pathOf(song)).append('\n')
             }
         }
-        return true
-    }
+        zip.write(favorites.toString().toByteArray())
+        zip.closeEntry()
 
-    private fun writeTop(uri: Uri, library: Library): Boolean {
-        val rows =
-            playCountRepository
-                .top(TOP_LIMIT * 2)
-                .mapNotNull { (uid, entry) -> library.findSong(uid)?.let { it to entry.count } }
-                .take(TOP_LIMIT)
-        val output = context.contentResolver.openOutputStream(uri, "wt") ?: return false
-        output.bufferedWriter().use { writer ->
-            writer.write("rank,title,artist,plays\n")
-            rows.forEachIndexed { i, (song, plays) ->
-                val title = song.name.resolve(context)
-                val artist = song.artists.firstOrNull()?.name?.resolve(context).orEmpty()
-                writer.write("${i + 1},${csv(title)},${csv(artist)},$plays\n")
+        // Activity: every counted play, and every song's total count.
+        zip.putNextEntry(ZipEntry(BackupRestorer.ACTIVITY_ENTRY))
+        val activity = StringBuilder("${BackupRestorer.ACTIVITY_HEADER} 1\n")
+        val paths = mutableMapOf<String, String?>()
+        fun pathFor(uid: String) =
+            paths.getOrPut(uid) {
+                org.oxycblt.musikr.Music.UID.fromString(uid)?.let { library.findSong(it) }?.let(::pathOf)
+            }
+        for ((uid, at) in playCountRepository.playsSince(0)) {
+            pathFor(uid)?.let { activity.append("play,").append(at).append(',').append(it).append('\n') }
+        }
+        for ((uid, entry) in playCountRepository.allCounts()) {
+            pathFor(uid)?.let {
+                activity
+                    .append("count,")
+                    .append(entry.count)
+                    .append(',')
+                    .append(entry.lastPlayedMs)
+                    .append(',')
+                    .append(it)
+                    .append('\n')
             }
         }
-        return true
+        zip.write(activity.toString().toByteArray())
+        zip.closeEntry()
     }
-
-    private fun csv(value: String) = "\"" + value.replace("\"", "\"\"") + "\""
 
     private fun createFile(folder: Uri, mime: String, name: String): Uri? =
         DocumentsContract.createDocument(context.contentResolver, folder, mime, name)
@@ -213,6 +212,5 @@ constructor(
         const val KEY_LAST = "auxio_backup_last"
         const val KEY_FAILED = "auxio_backup_failed"
         const val DAY_MS = 24L * 60 * 60 * 1000
-        const val TOP_LIMIT = 50
     }
 }
