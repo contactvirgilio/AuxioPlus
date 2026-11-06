@@ -528,8 +528,6 @@
         <item quantity="one">%d play</item>
         <item quantity="other">%d plays</item>
     </plurals>
-    <string name="lbl_volume">Volume</string>
-    <string name="lbl_brightness">Brightness</string>
     <string name="set_backups">Backups</string>
     <string name="set_backup_folder">Backup folder</string>
     <string name="set_backup_folder_desc">Pick a folder; an \"Auxio\" folder is created inside it</string>
