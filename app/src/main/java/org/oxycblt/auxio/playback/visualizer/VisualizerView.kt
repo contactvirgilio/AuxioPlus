@@ -91,11 +91,6 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
     private val gradientColors = IntArray(3)
     private var gradientHeight = -1f
     private val gradientStops = floatArrayOf(0f, 0.55f, 1f)
-    private val random = Random()
-    private var lastHue = random.nextFloat() * 360f
-    private var currentPalette = IntArray(3).also { randomPalette(it) }
-    private var nextPalette = IntArray(3).also { randomPalette(it) }
-    private var paletteStart = SystemClock.elapsedRealtime()
 
     private val frame = Runnable { onFrame() }
 
@@ -108,6 +103,12 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
         super.onAttachedToWindow()
         uiSettings.registerListener(this)
         update()
+    }
+
+    override fun onWindowVisibilityChanged(visibility: Int) {
+        super.onWindowVisibilityChanged(visibility)
+        // Nothing is drawn while the app is in the background or covered by the full screen page.
+        if (visibility == VISIBLE) update() else stop()
     }
 
     override fun onDetachedFromWindow() {
@@ -137,7 +138,7 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
                 animate().alpha(0f).setDuration(FADE_MS).withEndAction { isVisible = false }.start()
             }
         }
-        if (show && isAttachedToWindow) start() else stop()
+        if (show && isAttachedToWindow && windowVisibility == VISIBLE) start() else stop()
     }
 
     private fun start() {
@@ -282,6 +283,12 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
      * fades into the next one, which is only picked once it's needed.
      */
     private fun updateCycleColors() {
+        if (!paletteReady) {
+            currentPalette = IntArray(3).also { randomPalette(it) }
+            nextPalette = IntArray(3).also { randomPalette(it) }
+            paletteStart = SystemClock.elapsedRealtime()
+            paletteReady = true
+        }
         val interval = max(1000L, intervalMs)
         val fade = min(FADE_BETWEEN_PALETTES_MS, interval / 2)
         val now = SystemClock.elapsedRealtime()
@@ -353,6 +360,15 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
     private fun levelFor(decibels: Float) = ((decibels - FLOOR_DB) / -FLOOR_DB).coerceIn(0f, 1f)
 
     private companion object {
+        // The palettes are shared by every visualizer, so the small one and the full screen one
+        // always show the same colours at the same moment.
+        val random = Random()
+        var lastHue = random.nextFloat() * 360f
+        var paletteReady = false
+        lateinit var currentPalette: IntArray
+        lateinit var nextPalette: IntArray
+        var paletteStart = 0L
+
         const val FFT_SIZE = 4096
         const val FLOOR_DB = -70f
         const val MIN_BARS = 16
