@@ -91,13 +91,11 @@
     <string-array name="entries_visualizer_mode">
         <item>@string/set_visualizer_mode_spectrum</item>
         <item>@string/set_visualizer_mode_spectrum_cycle</item>
-        <item>@string/set_visualizer_mode_fullscreen</item>
     </string-array>
 
     <integer-array name="values_visualizer_mode">
         <item>@integer/visualizer_mode_spectrum</item>
         <item>@integer/visualizer_mode_spectrum_cycle</item>
-        <item>@integer/visualizer_mode_fullscreen</item>
     </integer-array>
 
     <string-array name="entries_visualizer_interval">
@@ -220,7 +218,6 @@
 
     <integer name="visualizer_mode_spectrum">0xA142</integer>
     <integer name="visualizer_mode_spectrum_cycle">0xA143</integer>
-    <integer name="visualizer_mode_fullscreen">0xA150</integer>
 
     <string name="set_key_backup_folder" translatable="false">auxio_backup_folder</string>
     <string name="set_key_backup_interval" translatable="false">auxio_backup_interval</string>

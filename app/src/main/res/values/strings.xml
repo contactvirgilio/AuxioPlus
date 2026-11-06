@@ -245,7 +245,6 @@
     <string name="set_visualizer_mode">Visualizer</string>
     <string name="set_visualizer_mode_spectrum">Musical spectrum</string>
     <string name="set_visualizer_mode_spectrum_cycle">Musical spectrum (colour cycle)</string>
-    <string name="set_visualizer_mode_fullscreen">Full screen (colour cycle)</string>
     <string name="lbl_volume">Volume</string>
     <string name="lbl_brightness">Brightness</string>
     <string name="set_visualizer_interval">Colour change interval</string>

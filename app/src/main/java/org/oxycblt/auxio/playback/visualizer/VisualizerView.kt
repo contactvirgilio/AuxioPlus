@@ -57,7 +57,7 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
     @Inject lateinit var buffer: VisualizerBuffer
     @Inject lateinit var playbackManager: PlaybackStateManager
 
-    /** Whether this is the full screen one: always showing, colour cycle, on black. */
+    /** Whether this is the full screen one: always showing and on black. */
     private val alwaysOn =
         context.obtainStyledAttributes(attrs, R.styleable.VisualizerView).use {
             it.getBoolean(R.styleable.VisualizerView_alwaysOn, false)
@@ -119,18 +119,13 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
     }
 
     private fun update() {
-        // The full screen mode draws the colour cycle, but on its own page and not on the cover.
-        val setting = uiSettings.visualizerMode
-        val newMode =
-            if (alwaysOn || setting == VisualizerMode.FULLSCREEN) VisualizerMode.SPECTRUM_CYCLE
-            else setting
+        val newMode = uiSettings.visualizerMode
         if (newMode != mode) {
             mode = newMode
             reset()
         }
         intervalMs = uiSettings.visualizerIntervalSeconds * 1000L
-        val show =
-            alwaysOn || (uiSettings.showVisualizer && setting != VisualizerMode.FULLSCREEN)
+        val show = alwaysOn || uiSettings.showVisualizer
         if (show != isVisible) {
             if (show) {
                 alpha = 0f
@@ -237,9 +232,7 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
                 barPaint.color = primaryColor
                 peakPaint.color = accentColor
             }
-            // The view only ever runs as SPECTRUM or SPECTRUM_CYCLE, see update().
-            VisualizerMode.SPECTRUM_CYCLE,
-            VisualizerMode.FULLSCREEN -> {
+            VisualizerMode.SPECTRUM_CYCLE -> {
                 updateCycleColors()
                 // One gradient over the full height, so only loud bars reach the top colour.
                 barPaint.shader =

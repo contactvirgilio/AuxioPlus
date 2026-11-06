@@ -22,6 +22,7 @@ import android.media.AudioManager
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
+import android.view.GestureDetector
 import android.view.MotionEvent
 import android.view.ViewConfiguration
 import android.view.WindowManager
@@ -45,9 +46,11 @@ import org.oxycblt.auxio.playback.formatDurationMs
 import org.oxycblt.musikr.Song
 
 /**
- * The colour cycle spectrum on the whole screen, with the artist, song and length in a pill at the
- * bottom. It has no buttons: the back gesture leaves it. Dragging up or down on the left half
- * changes the brightness and on the right half the volume.
+ * The chosen visualizer on the whole screen, with the artist, song and length in a pill at the
+ * bottom. It has no buttons: the back gesture leaves it.
+ * - Double tap the right half for the next song, the left half for the previous one.
+ * - Tap once to play or pause.
+ * - Drag up or down on the left half for the brightness, on the right half for the volume.
  */
 @AndroidEntryPoint
 class VisualizerActivity : AppCompatActivity() {
@@ -106,7 +109,34 @@ class VisualizerActivity : AppCompatActivity() {
         visibility = if (visible) android.view.View.VISIBLE else android.view.View.GONE
     }
 
+    private val gestures by lazy {
+        GestureDetector(
+                this,
+                object : GestureDetector.SimpleOnGestureListener() {
+                    override fun onDown(e: MotionEvent) = true
+
+                    override fun onSingleTapConfirmed(e: MotionEvent): Boolean {
+                        playbackModel.togglePlaying()
+                        showMessage(getString(R.string.desc_play_pause))
+                        return true
+                    }
+
+                    override fun onDoubleTap(e: MotionEvent): Boolean {
+                        if (e.x < binding.root.width * 0.5f) {
+                            playbackModel.prev()
+                            showMessage(getString(R.string.desc_skip_prev))
+                        } else {
+                            playbackModel.next()
+                            showMessage(getString(R.string.desc_skip_next))
+                        }
+                        return true
+                    }
+                },
+            )
+    }
+
     override fun dispatchTouchEvent(event: MotionEvent): Boolean {
+        gestures.onTouchEvent(event)
         val slop = ViewConfiguration.get(this).scaledTouchSlop
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
@@ -165,8 +195,12 @@ class VisualizerActivity : AppCompatActivity() {
     }
 
     private fun showLevel(label: String, level: Float) {
+        showMessage("$label ${(level * 100).roundToInt()}%")
+    }
+
+    private fun showMessage(text: String) {
         val view = binding.visualizerLevel
-        view.text = "$label ${(level * 100).roundToInt()}%"
+        view.text = text
         view.removeCallbacks(hideLevel)
         view.animate().cancel()
         view.alpha = 1f

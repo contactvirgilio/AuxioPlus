@@ -23,7 +23,6 @@ import androidx.recyclerview.widget.RecyclerView
 import org.oxycblt.auxio.databinding.ItemCoverBinding
 import org.oxycblt.auxio.list.adapter.FlexibleListAdapter
 import org.oxycblt.auxio.list.adapter.SimpleDiffCallback
-import org.oxycblt.auxio.playback.ui.stepper.StepperOverlay
 import org.oxycblt.auxio.util.inflater
 import org.oxycblt.musikr.Song
 
@@ -31,16 +30,15 @@ import org.oxycblt.musikr.Song
  * A [FlexibleListAdapter] that hosts [CoverViewHolder]s containing a [Song]'s cover and step
  * gesture overlays.
  *
- * @param listener The [StepperOverlay.Listener] that step gesture events will be forwarded to
  * @author Alexander Capehart (OxygenCobalt)
  */
-class CoverPagerAdapter(private val listener: StepperOverlay.Listener) :
+class CoverPagerAdapter :
     FlexibleListAdapter<Song, CoverViewHolder>(CoverViewHolder.DIFF_CALLBACK) {
 
     override fun onCreateViewHolder(parent: ViewGroup, pos: Int) = CoverViewHolder.from(parent)
 
     override fun onBindViewHolder(viewHolder: CoverViewHolder, pos: Int) {
-        viewHolder.bind(currentList[pos], listener)
+        viewHolder.bind(currentList[pos])
     }
 }
 
@@ -55,11 +53,9 @@ class CoverViewHolder private constructor(private val binding: ItemCoverBinding)
      * Bind new data to this instance.
      *
      * @param song The new [Song] to bind.
-     * @param listener An [StepperOverlay.Listener] to bind fast seek interactions to.
      */
-    fun bind(song: Song, listener: StepperOverlay.Listener) {
+    fun bind(song: Song) {
         binding.cover.bind(song)
-        binding.coverFastSeekOverlay.listener = listener
     }
 
     companion object {
