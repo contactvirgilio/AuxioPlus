@@ -48,9 +48,10 @@ import org.oxycblt.musikr.Song
 /**
  * The chosen visualizer on the whole screen, with the artist, song and length in a pill at the
  * bottom. It has no buttons: the back gesture leaves it.
- * - Double tap the right half for the next song, the left half for the previous one.
- * - Tap once to play or pause.
- * - Drag up or down on the left half for the brightness, on the right half for the volume.
+ * The screen is split in three columns:
+ * - Left: double tap for the previous song, drag up or down for the brightness.
+ * - Middle: tap once to play or pause.
+ * - Right: double tap for the next song, drag up or down for the volume.
  */
 @AndroidEntryPoint
 class VisualizerActivity : AppCompatActivity() {
@@ -116,23 +117,44 @@ class VisualizerActivity : AppCompatActivity() {
                     override fun onDown(e: MotionEvent) = true
 
                     override fun onSingleTapConfirmed(e: MotionEvent): Boolean {
+                        if (zone(e.x) != Zone.MIDDLE) return false
                         playbackModel.togglePlaying()
                         showMessage(getString(R.string.desc_play_pause))
                         return true
                     }
 
                     override fun onDoubleTap(e: MotionEvent): Boolean {
-                        if (e.x < binding.root.width * 0.5f) {
-                            playbackModel.prev()
-                            showMessage(getString(R.string.desc_skip_prev))
-                        } else {
-                            playbackModel.next()
-                            showMessage(getString(R.string.desc_skip_next))
+                        when (zone(e.x)) {
+                            Zone.LEFT -> {
+                                playbackModel.prev()
+                                showMessage(getString(R.string.desc_skip_prev))
+                            }
+                            Zone.RIGHT -> {
+                                playbackModel.next()
+                                showMessage(getString(R.string.desc_skip_next))
+                            }
+                            Zone.MIDDLE -> {}
                         }
                         return true
                     }
                 },
             )
+    }
+
+    private enum class Zone {
+        LEFT,
+        MIDDLE,
+        RIGHT,
+    }
+
+    /** The screen is split in three equal columns. */
+    private fun zone(x: Float): Zone {
+        val third = binding.root.width / 3f
+        return when {
+            x < third -> Zone.LEFT
+            x < third * 2 -> Zone.MIDDLE
+            else -> Zone.RIGHT
+        }
     }
 
     override fun dispatchTouchEvent(event: MotionEvent): Boolean {
@@ -148,9 +170,13 @@ class VisualizerActivity : AppCompatActivity() {
                 if (!adjusting) {
                     val dx = event.x - downX
                     val dy = event.y - downY
-                    if (abs(dy) > slop && abs(dy) > abs(dx) * 1.5f) {
+                    if (
+                        abs(dy) > slop &&
+                            abs(dy) > abs(dx) * 1.5f &&
+                            zone(downX) != Zone.MIDDLE
+                    ) {
                         adjusting = true
-                        adjustingBrightness = downX < binding.root.width * 0.5f
+                        adjustingBrightness = zone(downX) == Zone.LEFT
                         startLevel = if (adjustingBrightness) brightness() else volume()
                     }
                 }
