@@ -67,6 +67,10 @@ class VisualizerActivity : AppCompatActivity() {
     private var adjusting = false
     private var adjustingBrightness = false
     private var startLevel = 0f
+    private val preferences by lazy {
+        androidx.preference.PreferenceManager.getDefaultSharedPreferences(this)
+    }
+    private var showProgress = true
     private val hideLevel = Runnable { binding.visualizerLevel.animate().alpha(0f).start() }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -87,14 +91,39 @@ class VisualizerActivity : AppCompatActivity() {
             hide(WindowInsetsCompat.Type.systemBars())
         }
 
+        showProgress = preferences.getBoolean(KEY_PILL_PROGRESS, true)
         binding.visualizerPill.maxWidth = (resources.displayMetrics.widthPixels * 0.9f).toInt()
         binding.visualizerPill.isVisibleOrGone(false)
 
+        // Tapping the pill turns the progress fill on or off.
+        binding.visualizerPill.setOnClickListener {
+            showProgress = !showProgress
+            preferences.edit().putBoolean(KEY_PILL_PROGRESS, showProgress).apply()
+            updateProgress(playbackModel.positionDs.value)
+        }
+
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
-                playbackModel.song.collect { song -> showSong(song) }
+                launch {
+                    playbackModel.song.collect { song ->
+                        showSong(song)
+                        updateProgress(playbackModel.positionDs.value)
+                    }
+                }
+                launch { playbackModel.positionDs.collect { updateProgress(it) } }
             }
         }
+    }
+
+    /** Fill the pill up to how far into the song it is, if that is turned on. */
+    private fun updateProgress(positionDs: Long) {
+        val fill =
+            (binding.visualizerPill.background as? android.graphics.drawable.LayerDrawable)
+                ?.findDrawableByLayerId(R.id.pill_progress) ?: return
+        val duration = playbackModel.song.value?.durationMs ?: 0L
+        fill.level =
+            if (!showProgress || duration <= 0L) 0
+            else (positionDs * 1000_000L / duration).toInt().coerceIn(0, 10_000)
     }
 
     private fun showSong(song: Song?) {
@@ -272,3 +301,5 @@ class VisualizerActivity : AppCompatActivity() {
         const val LEVEL_MS = 900L
     }
 }
+
+private const val KEY_PILL_PROGRESS = "auxio_visualizer_pill_progress"

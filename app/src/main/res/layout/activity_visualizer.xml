@@ -33,7 +33,7 @@
         android:layout_height="wrap_content"
         android:layout_gravity="bottom|center_horizontal"
         android:layout_marginBottom="48dp"
-        android:background="@drawable/bg_visualizer_pill"
+        android:background="@drawable/bg_visualizer_pill_progress"
         android:ellipsize="marquee"
         android:marqueeRepeatLimit="marquee_forever"
         android:paddingHorizontal="24dp"
