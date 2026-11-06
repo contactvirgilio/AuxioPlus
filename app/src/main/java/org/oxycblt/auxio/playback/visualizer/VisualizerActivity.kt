@@ -48,7 +48,8 @@ import org.oxycblt.musikr.Song
 /**
  * The chosen visualizer on the whole screen, with the artist, song and length in a pill at the
  * bottom. It has no buttons: the back gesture leaves it.
- * The screen is split in three columns:
+ * Only the middle of the screen (between the top quarter and the bottom fifth) reacts to touch.
+ * It is split in three columns:
  * - Left: double tap for the previous song, drag up or down for the brightness.
  * - Middle: tap once to play or pause.
  * - Right: double tap for the next song, drag up or down for the volume.
@@ -157,7 +158,19 @@ class VisualizerActivity : AppCompatActivity() {
         }
     }
 
+    /** Only the middle of the screen reacts, so the system edge gestures are never in the way. */
+    private fun inActiveBand(y: Float): Boolean {
+        val h = binding.root.height
+        return y >= h * BAND_TOP && y <= h * BAND_BOTTOM
+    }
+
     override fun dispatchTouchEvent(event: MotionEvent): Boolean {
+        if (event.actionMasked == MotionEvent.ACTION_DOWN && !inActiveBand(event.y)) {
+            ignoring = true
+        } else if (event.actionMasked == MotionEvent.ACTION_DOWN) {
+            ignoring = false
+        }
+        if (ignoring) return super.dispatchTouchEvent(event)
         gestures.onTouchEvent(event)
         val slop = ViewConfiguration.get(this).scaledTouchSlop
         when (event.actionMasked) {
@@ -233,7 +246,11 @@ class VisualizerActivity : AppCompatActivity() {
         view.postDelayed(hideLevel, LEVEL_MS)
     }
 
+    private var ignoring = false
+
     private companion object {
+        const val BAND_TOP = 0.25f
+        const val BAND_BOTTOM = 0.82f
         const val LEVEL_MS = 900L
     }
 }
