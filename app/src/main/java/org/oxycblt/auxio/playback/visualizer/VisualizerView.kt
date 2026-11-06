@@ -36,6 +36,7 @@ import com.google.android.material.R as MR
 import dagger.hilt.android.AndroidEntryPoint
 import java.util.Random
 import javax.inject.Inject
+import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
 import org.oxycblt.auxio.R
@@ -350,20 +351,31 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
             RARE_PALETTES[random.nextInt(RARE_PALETTES.size)].copyInto(into)
             return
         }
-        val hue: Float
+        // Twelve colour families of 30 degrees each, and brown as a thirteenth, so brown comes up
+        // just as often as any other colour and not more. A palette never starts close to the hue
+        // of the previous one.
+        var brown: Boolean
+        var hue: Float
+        var tries = 0
+        do {
+            val family = random.nextInt(FAMILIES + 1)
+            brown = family == FAMILIES
+            hue =
+                if (brown) BROWN_HUE + (random.nextFloat() - 0.5f) * 30f
+                else family * 30f + random.nextFloat() * 30f
+            val distance = abs(((hue - lastHue + 540f) % 360f) - 180f)
+        } while (distance < MIN_HUE_JUMP && ++tries < 50)
         val sweep: Float
         val saturation: Float
         val dark: Float
         val lift: Float
-        if (random.nextFloat() < EARTHY_CHANCE) {
+        if (brown) {
             // Brown is just dark, muted orange, which the bright palettes never reach.
-            hue = 15f + random.nextFloat() * 30f
             sweep = (random.nextFloat() - 0.5f) * 30f
             saturation = 0.4f + random.nextFloat() * 0.3f
             dark = 0.2f + random.nextFloat() * 0.08f
             lift = 0.09f + random.nextFloat() * 0.05f
         } else {
-            hue = (lastHue + MIN_HUE_JUMP + random.nextFloat() * (360f - 2 * MIN_HUE_JUMP)) % 360f
             // From nearly the same colour all the way to opposites on the colour wheel.
             sweep = (if (random.nextBoolean()) 1f else -1f) * (15f + random.nextFloat() * 90f)
             saturation = 0.5f + random.nextFloat() * 0.45f
@@ -415,6 +427,8 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
         const val FADE_BETWEEN_PALETTES_MS = 1500L
 
         const val MIN_HUE_JUMP = 60f
+        const val FAMILIES = 12
+        const val BROWN_HUE = 30f
 
         /** How often a palette is one of the hand-picked [RARE_PALETTES]: about 1 in 1000. */
         const val RARE_CHANCE = 0.001f
@@ -466,9 +480,6 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
                 // Trench: black, deep blue, white foam.
                 intArrayOf(0xFF000000.toInt(), 0xFF0D1B6B.toInt(), 0xFFFFFFFF.toInt()),
             )
-
-        /** How often a palette is a dark, muted brown instead of a bright colour. */
-        const val EARTHY_CHANCE = 0.18f
 
         private fun hsl(hue: Float, saturation: Float, lightness: Float) =
             ColorUtils.HSLToColor(floatArrayOf(((hue % 360f) + 360f) % 360f, saturation, lightness))
