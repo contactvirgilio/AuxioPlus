@@ -293,6 +293,7 @@ class PlaylistMenuDialogFragment : MenuDialogFragment<Menu.ForPlaylist>() {
     private val musicModel: MusicViewModel by activityViewModels()
     private val playbackModel: PlaybackViewModel by activityViewModels()
     private val args: PlaylistMenuDialogFragmentArgs by navArgs()
+    @Inject lateinit var favoritesRepository: FavoritesRepository
 
     override val parcel
         get() = args.parcel
@@ -307,6 +308,7 @@ class PlaylistMenuDialogFragment : MenuDialogFragment<Menu.ForPlaylist>() {
                 R.id.action_play_next,
                 R.id.action_queue_add,
                 R.id.action_playlist_add,
+                R.id.action_favorite_all,
                 R.id.action_export,
                 R.id.action_share,
             )
@@ -339,6 +341,15 @@ class PlaylistMenuDialogFragment : MenuDialogFragment<Menu.ForPlaylist>() {
             R.id.action_queue_add -> {
                 playbackModel.addToQueue(menu.playlist)
                 requireContext().showToast(R.string.lng_queue_added)
+            }
+            R.id.action_favorite_all -> {
+                val added = favoritesRepository.addAll(menu.playlist.songs.map { it.uid })
+                android.widget.Toast.makeText(
+                        requireContext().applicationContext,
+                        getString(R.string.fmt_favorites_added, added),
+                        android.widget.Toast.LENGTH_SHORT,
+                    )
+                    .show()
             }
             R.id.action_rename -> musicModel.renamePlaylist(menu.playlist)
             R.id.action_import -> musicModel.importPlaylist(target = menu.playlist)

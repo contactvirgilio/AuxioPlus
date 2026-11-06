@@ -91,6 +91,31 @@ class FavoritesRepository @Inject constructor(@ApplicationContext context: Conte
         return nowFavorite
     }
 
+    /**
+     * Add all of [uids] to the favorites. Songs that already are favorites keep their place.
+     *
+     * @return How many songs were newly added.
+     */
+    fun addAll(uids: Collection<Music.UID>): Int {
+        val now = System.currentTimeMillis()
+        val added = mutableListOf<String>()
+        synchronized(lock) {
+            val updated = favorites.toMutableMap()
+            // Keep the playlist's order: the first song ends up the most recent.
+            for ((i, uid) in uids.withIndex()) {
+                val key = uid.toString()
+                if (updated.containsKey(key)) continue
+                updated[key] = now - i
+                added += key
+            }
+            favorites = updated
+        }
+        if (added.isEmpty()) return 0
+        scope.launch { added.forEachIndexed { i, key -> database.add(key, now - i) } }
+        notifyListeners()
+        return added.size
+    }
+
     fun addListener(listener: Listener) {
         listeners.addIfAbsent(listener)
     }

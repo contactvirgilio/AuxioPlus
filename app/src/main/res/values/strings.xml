@@ -549,6 +549,8 @@
     <string name="set_album_tiles_desc">Show albums as a grid of covers instead of a list</string>
     <string name="lbl_activity">Activity</string>
     <string name="lbl_favorites">Favorites</string>
+    <string name="lbl_favorite_all">Add all to favorites</string>
+    <string name="fmt_favorites_added">Added %d new songs to favorites</string>
     <string name="lbl_favorite_add">Add to favorites</string>
     <string name="lbl_favorite_remove">Remove from favorites</string>
     <string name="lng_favorite_added">Added to favorites</string>
