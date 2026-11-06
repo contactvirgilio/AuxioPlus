@@ -248,10 +248,15 @@ class PlaybackPanelFragment :
 
     /** Show the heart filled when the playing song is a favorite. */
     private fun updateHeart() {
-        val item = requireBinding().playbackToolbar.menu.findItem(R.id.action_favorite) ?: return
         val favorite = playbackModel.song.value?.let { favoritesRepository.isFavorite(it.uid) } == true
-        item.setIcon(if (favorite) R.drawable.ic_heart_red_24 else R.drawable.ic_heart_24)
-        item.setTitle(if (favorite) R.string.lbl_favorite_remove else R.string.lbl_favorite_add)
+        requireBinding()
+            .playbackToolbar
+            .setMenuItemIcon(
+                R.id.action_favorite,
+                if (favorite) R.drawable.ic_heart_red_24 else R.drawable.ic_heart_24,
+                getString(if (favorite) R.string.lbl_favorite_remove else R.string.lbl_favorite_add),
+                keepColor = favorite,
+            )
     }
 
     private fun updateSong(song: Song?) {

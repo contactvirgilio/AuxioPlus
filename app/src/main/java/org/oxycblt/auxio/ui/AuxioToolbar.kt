@@ -209,6 +209,30 @@ constructor(
 
     fun getMenuButton(itemId: Int): RippleFixMaterialButton? = actionButtons[itemId]
 
+    private val defaultIconTints = mutableMapOf<Int, android.content.res.ColorStateList?>()
+
+    /**
+     * Change the icon of an action button. The buttons are drawn by this toolbar, so changing the
+     * icon of the [MenuItem] alone does not update them.
+     *
+     * @param keepColor Whether the icon keeps its own colours instead of the usual icon tint.
+     */
+    fun setMenuItemIcon(
+        itemId: Int,
+        @androidx.annotation.DrawableRes iconRes: Int,
+        title: CharSequence? = null,
+        keepColor: Boolean = false,
+    ) {
+        val button = getMenuButton(itemId) ?: return
+        val defaultTint = defaultIconTints.getOrPut(itemId) { button.iconTint }
+        button.setIconResource(iconRes)
+        button.iconTint = if (keepColor) null else defaultTint
+        if (title != null) {
+            button.contentDescription = title
+            TooltipCompat.setTooltipText(button, title)
+        }
+    }
+
     @SuppressLint("RestrictedApi")
     fun setMenuItemEnabled(itemId: Int, enabled: Boolean) {
         menuBuilder.findItem(itemId)?.isEnabled = enabled
