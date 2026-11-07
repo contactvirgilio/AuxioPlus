@@ -24,17 +24,25 @@ import android.view.ViewGroup
 import androidx.core.view.isInvisible
 import androidx.core.view.isVisible
 import androidx.fragment.app.activityViewModels
+import androidx.preference.PreferenceManager
+import androidx.recyclerview.widget.GridLayoutManager
 import dagger.hilt.android.AndroidEntryPoint
 import org.oxycblt.auxio.R
 import org.oxycblt.auxio.databinding.FragmentHomeListBinding
 import org.oxycblt.auxio.detail.DetailViewModel
 import org.oxycblt.auxio.home.HomeViewModel
+import org.oxycblt.auxio.list.GridLevel
+import org.oxycblt.auxio.list.GridZoom
 import org.oxycblt.auxio.list.ListFragment
 import org.oxycblt.auxio.list.ListViewModel
 import org.oxycblt.auxio.list.SelectableListListener
 import org.oxycblt.auxio.list.adapter.SelectionIndicatorAdapter
 import org.oxycblt.auxio.list.recycler.ArtistViewHolder
 import org.oxycblt.auxio.list.recycler.FastScrollRecyclerView
+import org.oxycblt.auxio.list.recycler.SmallTileViewHolder
+import org.oxycblt.auxio.list.recycler.TileViewHolder
+import org.oxycblt.auxio.music.resolve
+import org.oxycblt.auxio.util.getPlural
 import org.oxycblt.auxio.list.sort.Sort
 import org.oxycblt.auxio.music.IndexingState
 import org.oxycblt.auxio.music.MusicViewModel
@@ -63,6 +71,7 @@ class ArtistListFragment :
     override val musicModel: MusicViewModel by activityViewModels()
     override val playbackModel: PlaybackViewModel by activityViewModels()
     private val artistAdapter = ArtistAdapter(this)
+    private var zoom: GridZoom? = null
 
     override fun onCreateBinding(inflater: LayoutInflater) =
         FragmentHomeListBinding.inflate(inflater)
@@ -76,6 +85,17 @@ class ArtistListFragment :
             popupProvider = this@ArtistListFragment
             listener = this@ArtistListFragment
         }
+        zoom =
+            GridZoom(
+                    requireContext(),
+                    PreferenceManager.getDefaultSharedPreferences(requireContext()),
+                    ZOOM_KEY,
+                    GridLevel.LIST,
+                ) {
+                    applyLevel(binding)
+                }
+                .also { it.attach(binding.homeRecycler) }
+        applyLevel(binding)
 
         binding.homeNoMusicPlaceholder.apply {
             setImageResource(R.drawable.ic_artist_48)
@@ -94,6 +114,23 @@ class ArtistListFragment :
             playbackModel.isPlaying,
             ::updatePlayback,
         )
+    }
+
+    /** Lay the artists out as a list or as a grid depending on the pinch zoom level. */
+    private fun applyLevel(binding: FragmentHomeListBinding) {
+        val level = zoom?.level ?: GridLevel.LIST
+        val columns =
+            if (level == GridLevel.LIST) {
+                1
+            } else {
+                (resources.displayMetrics.widthPixels /
+                        resources.displayMetrics.density /
+                        level.itemWidthDp)
+                    .toInt()
+                    .coerceAtLeast(2)
+            }
+        (binding.homeRecycler.layoutManager as? GridLayoutManager)?.spanCount = columns
+        artistAdapter.level = level
     }
 
     override fun onDestroyBinding(binding: FragmentHomeListBinding) {
@@ -171,13 +208,68 @@ class ArtistListFragment :
      * @param listener An [SelectableListListener] to bind interactions to.
      */
     private class ArtistAdapter(private val listener: SelectableListListener<Artist>) :
-        SelectionIndicatorAdapter<Artist, ArtistViewHolder>(ArtistViewHolder.DIFF_CALLBACK) {
+        SelectionIndicatorAdapter<Artist, SelectionIndicatorAdapter.ViewHolder>(
+            ArtistViewHolder.DIFF_CALLBACK
+        ) {
+        /** How artists are laid out. */
+        var level = GridLevel.LIST
+            set(value) {
+                if (field != value) {
+                    field = value
+                    notifyDataSetChanged()
+                }
+            }
+
+        override fun getItemViewType(position: Int) =
+            when (level) {
+                GridLevel.LIST -> ArtistViewHolder.VIEW_TYPE
+                GridLevel.TILES -> TileViewHolder.VIEW_TYPE
+                GridLevel.SMALL -> SmallTileViewHolder.VIEW_TYPE
+            }
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int) =
-            ArtistViewHolder.from(parent)
+            when (viewType) {
+                TileViewHolder.VIEW_TYPE -> TileViewHolder.from(parent)
+                SmallTileViewHolder.VIEW_TYPE -> SmallTileViewHolder.from(parent)
+                else -> ArtistViewHolder.from(parent)
+            }
 
-        override fun onBindViewHolder(holder: ArtistViewHolder, position: Int) {
-            holder.bind(getItem(position), listener)
+        override fun onBindViewHolder(holder: SelectionIndicatorAdapter.ViewHolder, position: Int) {
+            val artist = getItem(position)
+            val context = holder.itemView.context
+            when (holder) {
+                is TileViewHolder ->
+                    holder.bind(
+                        artist,
+                        listener,
+                        artist.name.resolve(context),
+                        context.getString(
+                            R.string.fmt_two,
+                            if (artist.explicitAlbums.isNotEmpty()) {
+                                context.getPlural(
+                                    R.plurals.fmt_album_count,
+                                    artist.explicitAlbums.size,
+                                )
+                            } else {
+                                context.getString(R.string.def_album_count)
+                            },
+                            if (artist.songs.isNotEmpty()) {
+                                context.getPlural(R.plurals.fmt_song_count, artist.songs.size)
+                            } else {
+                                context.getString(R.string.def_song_count)
+                            },
+                        ),
+                    ) {
+                        it.bind(artist)
+                    }
+                is SmallTileViewHolder ->
+                    holder.bind(artist, listener, artist.name.resolve(context)) { it.bind(artist) }
+                is ArtistViewHolder -> holder.bind(artist, listener)
+            }
         }
+    }
+
+    private companion object {
+        const val ZOOM_KEY = "auxio_artist_grid_level"
     }
 }

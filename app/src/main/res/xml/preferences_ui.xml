@@ -39,12 +39,6 @@
         app:title="@string/set_visualizer_interval" />
 
     <SwitchPreferenceCompat
-        app:defaultValue="false"
-        app:key="@string/set_key_album_tiles"
-        app:summary="@string/set_album_tiles_desc"
-        app:title="@string/set_album_tiles" />
-
-    <SwitchPreferenceCompat
         app:defaultValue="true"
         app:key="@string/set_key_round_mode"
         app:summary="@string/set_round_mode_desc"

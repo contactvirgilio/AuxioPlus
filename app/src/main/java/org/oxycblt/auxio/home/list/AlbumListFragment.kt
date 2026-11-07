@@ -31,15 +31,18 @@ import dagger.hilt.android.AndroidEntryPoint
 import java.util.Calendar
 import org.oxycblt.auxio.R
 import org.oxycblt.auxio.databinding.FragmentHomeListBinding
-import org.oxycblt.auxio.databinding.ItemAlbumTileBinding
 import org.oxycblt.auxio.detail.DetailViewModel
 import org.oxycblt.auxio.home.HomeViewModel
+import org.oxycblt.auxio.list.GridLevel
+import org.oxycblt.auxio.list.GridZoom
 import org.oxycblt.auxio.list.ListFragment
 import org.oxycblt.auxio.list.ListViewModel
 import org.oxycblt.auxio.list.SelectableListListener
 import org.oxycblt.auxio.list.adapter.SelectionIndicatorAdapter
 import org.oxycblt.auxio.list.recycler.AlbumViewHolder
 import org.oxycblt.auxio.list.recycler.FastScrollRecyclerView
+import org.oxycblt.auxio.list.recycler.SmallTileViewHolder
+import org.oxycblt.auxio.list.recycler.TileViewHolder
 import org.oxycblt.auxio.list.sort.Sort
 import org.oxycblt.auxio.music.IndexingState
 import org.oxycblt.auxio.music.MusicViewModel
@@ -71,6 +74,7 @@ class AlbumListFragment :
     override val musicModel: MusicViewModel by activityViewModels()
     override val playbackModel: PlaybackViewModel by activityViewModels()
     private val albumAdapter = AlbumAdapter(this)
+    private var zoom: GridZoom? = null
 
     override fun onCreateBinding(inflater: LayoutInflater) =
         FragmentHomeListBinding.inflate(inflater)
@@ -84,7 +88,23 @@ class AlbumListFragment :
             popupProvider = this@AlbumListFragment
             listener = this@AlbumListFragment
         }
-        applyTiles(binding)
+        zoom =
+            GridZoom(
+                    requireContext(),
+                    PreferenceManager.getDefaultSharedPreferences(requireContext()),
+                    ZOOM_KEY,
+                    // Album tiles used to be a setting, keep whoever turned it on.
+                    if (
+                        PreferenceManager.getDefaultSharedPreferences(requireContext())
+                            .getBoolean(getString(R.string.set_key_album_tiles), false)
+                    )
+                        GridLevel.TILES
+                    else GridLevel.LIST,
+                ) {
+                    applyLevel(binding)
+                }
+                .also { it.attach(binding.homeRecycler) }
+        applyLevel(binding)
 
         binding.homeNoMusicPlaceholder.apply {
             setImageResource(R.drawable.ic_album_48)
@@ -105,28 +125,21 @@ class AlbumListFragment :
         )
     }
 
-    override fun onResume() {
-        super.onResume()
-        // The tile setting may have been changed in settings while this screen was kept around.
-        binding?.let(::applyTiles)
-    }
-
-    /** Switch between the list and the tile grid depending on the setting. */
-    private fun applyTiles(binding: FragmentHomeListBinding) {
-        val tiles =
-            PreferenceManager.getDefaultSharedPreferences(requireContext())
-                .getBoolean(getString(R.string.set_key_album_tiles), false)
-        val density = resources.displayMetrics.density
+    /** Lay the albums out as a list or as a grid depending on the pinch zoom level. */
+    private fun applyLevel(binding: FragmentHomeListBinding) {
+        val level = zoom?.level ?: GridLevel.LIST
         val columns =
-            if (tiles) {
-                (resources.displayMetrics.widthPixels / density / TILE_WIDTH_DP)
+            if (level == GridLevel.LIST) {
+                1
+            } else {
+                (resources.displayMetrics.widthPixels /
+                        resources.displayMetrics.density /
+                        level.itemWidthDp)
                     .toInt()
                     .coerceAtLeast(2)
-            } else {
-                1
             }
         (binding.homeRecycler.layoutManager as? GridLayoutManager)?.spanCount = columns
-        albumAdapter.tiles = tiles
+        albumAdapter.level = level
     }
 
     override fun onDestroyBinding(binding: FragmentHomeListBinding) {
@@ -224,8 +237,8 @@ class AlbumListFragment :
         SelectionIndicatorAdapter<Album, SelectionIndicatorAdapter.ViewHolder>(
             AlbumViewHolder.DIFF_CALLBACK
         ) {
-        /** Whether albums are shown as tiles instead of list rows. */
-        var tiles = false
+        /** How albums are laid out. */
+        var level = GridLevel.LIST
             set(value) {
                 if (field != value) {
                     field = value
@@ -233,20 +246,41 @@ class AlbumListFragment :
                 }
             }
 
-        override fun getItemViewType(position: Int) = if (tiles) TILE_VIEW_TYPE else LIST_VIEW_TYPE
+        override fun getItemViewType(position: Int) =
+            when (level) {
+                GridLevel.LIST -> AlbumViewHolder.VIEW_TYPE
+                GridLevel.TILES -> TileViewHolder.VIEW_TYPE
+                GridLevel.SMALL -> SmallTileViewHolder.VIEW_TYPE
+            }
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int) =
-            if (viewType == TILE_VIEW_TYPE) AlbumTileViewHolder.from(parent)
-            else AlbumViewHolder.from(parent)
+            when (viewType) {
+                TileViewHolder.VIEW_TYPE -> TileViewHolder.from(parent)
+                SmallTileViewHolder.VIEW_TYPE -> SmallTileViewHolder.from(parent)
+                else -> AlbumViewHolder.from(parent)
+            }
 
         override fun onBindViewHolder(holder: SelectionIndicatorAdapter.ViewHolder, position: Int) {
+            val album = getItem(position)
+            val context = holder.itemView.context
             when (holder) {
-                is AlbumTileViewHolder -> holder.bind(getItem(position), listener)
-                is AlbumViewHolder -> holder.bind(getItem(position), listener)
+                is TileViewHolder ->
+                    holder.bind(
+                        album,
+                        listener,
+                        album.name.resolve(context),
+                        album.artists.resolveNames(context),
+                    ) {
+                        it.bind(album)
+                    }
+                is SmallTileViewHolder ->
+                    holder.bind(album, listener, album.name.resolve(context)) { it.bind(album) }
+                is AlbumViewHolder -> holder.bind(album, listener)
             }
         }
+    }
 
-        private companion object {
+    private companion object {
             const val LIST_VIEW_TYPE = AlbumViewHolder.VIEW_TYPE
             const val TILE_VIEW_TYPE = AlbumViewHolder.VIEW_TYPE + 1000
         }
@@ -278,7 +312,6 @@ class AlbumListFragment :
     }
 
     private companion object {
-        /** Roughly how wide a tile should be, so the number of columns follows the screen. */
-        const val TILE_WIDTH_DP = 170
+        const val ZOOM_KEY = "auxio_album_grid_level"
     }
 }
