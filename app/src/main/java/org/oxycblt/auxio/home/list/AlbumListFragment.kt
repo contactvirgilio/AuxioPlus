@@ -281,37 +281,6 @@ class AlbumListFragment :
     }
 
     private companion object {
-            const val LIST_VIEW_TYPE = AlbumViewHolder.VIEW_TYPE
-            const val TILE_VIEW_TYPE = AlbumViewHolder.VIEW_TYPE + 1000
-        }
-    }
-
-    /** A [SelectionIndicatorAdapter.ViewHolder] that shows an [Album] as a cover tile. */
-    private class AlbumTileViewHolder(private val binding: ItemAlbumTileBinding) :
-        SelectionIndicatorAdapter.ViewHolder(binding.root) {
-        fun bind(album: Album, listener: SelectableListListener<Album>) {
-            listener.bind(album, this, menuButton = binding.tileMenu)
-            binding.tileImage.bind(album)
-            binding.tileName.text = album.name.resolve(binding.context)
-            binding.tileInfo.text = album.artists.resolveNames(binding.context)
-        }
-
-        override fun updatePlayingIndicator(isActive: Boolean, isPlaying: Boolean) {
-            binding.root.isSelected = isActive
-            binding.tileImage.setPlaying(isPlaying)
-        }
-
-        override fun updateSelectionIndicator(isSelected: Boolean) {
-            binding.root.isActivated = isSelected
-        }
-
-        companion object {
-            fun from(parent: View) =
-                AlbumTileViewHolder(ItemAlbumTileBinding.inflate(parent.context.inflater))
-        }
-    }
-
-    private companion object {
         const val ZOOM_KEY = "auxio_album_grid_level"
     }
 }
