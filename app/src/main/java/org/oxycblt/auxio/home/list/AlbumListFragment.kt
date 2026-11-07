@@ -281,6 +281,6 @@ class AlbumListFragment :
     }
 
     private companion object {
-        const val ZOOM_KEY = "auxio_album_grid_level"
+        const val ZOOM_KEY = "auxio_album_grid_level_v2"
     }
 }

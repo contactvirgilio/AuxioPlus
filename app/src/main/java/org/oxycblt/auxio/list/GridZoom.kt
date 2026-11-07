@@ -32,15 +32,15 @@ enum class GridLevel(
 ) {
     /** One row per item. */
     LIST(0),
-    /** A grid of covers with names. */
-    TILES(170),
     /** A denser grid of covers with short names. */
     SMALL(105),
+    /** A grid of covers with names. */
+    TILES(170),
 }
 
 /**
- * Lets the user pinch a list to change its [GridLevel]: pinching in shows more, smaller items and
- * pinching out goes back towards the list. The level is remembered per list.
+ * Lets the user pinch a list to change its [GridLevel]: pinching out makes items bigger and pinching
+ * in goes back towards the list. The level is remembered per list.
  *
  * @param preferences Where the level is kept.
  * @param key The preference key to keep this list's level under.
@@ -75,8 +75,8 @@ class GridZoom(
                 override fun onScale(detector: ScaleGestureDetector): Boolean {
                     accumulated *= detector.scaleFactor
                     when {
-                        accumulated < PINCH_IN -> step(+1)
-                        accumulated > PINCH_OUT -> step(-1)
+                        accumulated < PINCH_IN -> step(-1)
+                        accumulated > PINCH_OUT -> step(+1)
                     }
                     return true
                 }

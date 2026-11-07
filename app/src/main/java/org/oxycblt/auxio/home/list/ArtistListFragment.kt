@@ -270,6 +270,6 @@ class ArtistListFragment :
     }
 
     private companion object {
-        const val ZOOM_KEY = "auxio_artist_grid_level"
+        const val ZOOM_KEY = "auxio_artist_grid_level_v2"
     }
 }
