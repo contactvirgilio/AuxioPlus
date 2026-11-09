@@ -115,7 +115,7 @@
             <FrameLayout
                 android:layout_width="48dp"
                 android:layout_height="48dp"
-                android:background="@drawable/bg_logo"
+                android:background="@drawable/bg_logo">
 
                 <TextView
                     android:id="@+id/mini_letter"
