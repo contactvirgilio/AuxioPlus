@@ -22,7 +22,9 @@ import android.os.Bundle
 import android.os.SystemClock
 import android.view.LayoutInflater
 import androidx.core.view.isVisible
+import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.lifecycleScope
+import androidx.preference.PreferenceManager
 import dagger.hilt.android.AndroidEntryPoint
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -36,11 +38,16 @@ import org.oxycblt.auxio.R
 import org.oxycblt.auxio.databinding.FragmentHomeStatsBinding
 import org.oxycblt.auxio.databinding.ItemStatsAlbumBinding
 import org.oxycblt.auxio.databinding.ItemStatsArtistBinding
+import org.oxycblt.auxio.databinding.ItemTopSongBinding
+import org.oxycblt.auxio.home.HomeViewModel
+import org.oxycblt.auxio.list.ListViewModel
+import org.oxycblt.auxio.playback.PlaybackViewModel
 import org.oxycblt.auxio.music.MusicRepository
 import org.oxycblt.auxio.music.resolve
 import org.oxycblt.auxio.music.resolveNames
 import org.oxycblt.auxio.playback.stats.PlayCountRepository
 import org.oxycblt.auxio.ui.ViewBindingFragment
+import org.oxycblt.auxio.util.getAttrColorCompat
 import org.oxycblt.auxio.util.getPlural
 import org.oxycblt.musikr.Album
 import org.oxycblt.musikr.Artist
@@ -54,6 +61,14 @@ class StatsFragment :
     ViewBindingFragment<FragmentHomeStatsBinding>(), PlayCountRepository.Listener {
     @Inject lateinit var playCountRepository: PlayCountRepository
     @Inject lateinit var musicRepository: MusicRepository
+    private val homeModel: HomeViewModel by activityViewModels()
+    private val listModel: ListViewModel by activityViewModels()
+    private val playbackModel: PlaybackViewModel by activityViewModels()
+    private val preferences by lazy {
+        PreferenceManager.getDefaultSharedPreferences(requireContext())
+    }
+    private var trackLimit = 5
+    private var lastStats: Stats? = null
     private var range = Range.MONTH
     private var lastRefreshAt = 0L
 
@@ -70,6 +85,7 @@ class StatsFragment :
         val songs: Int,
         val bars: FloatArray,
         val labels: List<String>,
+        val tracks: List<Pair<Song, Int>>,
         val artists: List<Pair<Artist, Int>>,
         val albums: List<Pair<Album, Int>>,
     )
@@ -91,6 +107,24 @@ class StatsFragment :
                     else -> Range.MONTH
                 }
             refresh()
+        }
+        trackLimit = preferences.getInt(KEY_TRACK_LIMIT, 5).takeIf { it in TRACK_LIMITS } ?: 5
+        binding.statsTracksCount.check(
+            when (trackLimit) {
+                25 -> R.id.stats_tracks_25
+                50 -> R.id.stats_tracks_50
+                else -> R.id.stats_tracks_5
+            }
+        )
+        binding.statsTracksCount.setOnCheckedStateChangeListener { _, checked ->
+            trackLimit =
+                when (checked.firstOrNull()) {
+                    R.id.stats_tracks_25 -> 25
+                    R.id.stats_tracks_50 -> 50
+                    else -> 5
+                }
+            preferences.edit().putInt(KEY_TRACK_LIMIT, trackLimit).apply()
+            lastStats?.let { showTracks(it) }
         }
         playCountRepository.addListener(this)
         refresh()
@@ -132,23 +166,34 @@ class StatsFragment :
     private fun compute(range: Range): Stats {
         val library = musicRepository.library
         val bucketsAreMonths = range == Range.YEAR || range == Range.ALL
-        val bucketCount =
-            when (range) {
-                Range.WEEK -> 7
-                Range.MONTH -> 30
-                else -> 12
-            }
-        // Where the range starts: midnight (or the 1st) of the first bar.
+        // Where the range starts: this Monday, the 1st of this month, 1 January, or for all time
+        // a year back (only used for the bars).
         val calendar = Calendar.getInstance()
         calendar.set(Calendar.HOUR_OF_DAY, 0)
         calendar.set(Calendar.MINUTE, 0)
         calendar.set(Calendar.SECOND, 0)
         calendar.set(Calendar.MILLISECOND, 0)
-        if (bucketsAreMonths) {
-            calendar.set(Calendar.DAY_OF_MONTH, 1)
-            calendar.add(Calendar.MONTH, -(bucketCount - 1))
-        } else {
-            calendar.add(Calendar.DAY_OF_YEAR, -(bucketCount - 1))
+        val bucketCount =
+            when (range) {
+                Range.WEEK -> 7
+                Range.MONTH -> calendar.getActualMaximum(Calendar.DAY_OF_MONTH)
+                else -> 12
+            }
+        when (range) {
+            Range.WEEK -> {
+                // Weeks start on Monday.
+                val sinceMonday = (calendar.get(Calendar.DAY_OF_WEEK) + 5) % 7
+                calendar.add(Calendar.DAY_OF_YEAR, -sinceMonday)
+            }
+            Range.MONTH -> calendar.set(Calendar.DAY_OF_MONTH, 1)
+            Range.YEAR -> {
+                calendar.set(Calendar.MONTH, Calendar.JANUARY)
+                calendar.set(Calendar.DAY_OF_MONTH, 1)
+            }
+            Range.ALL -> {
+                calendar.set(Calendar.DAY_OF_MONTH, 1)
+                calendar.add(Calendar.MONTH, -(bucketCount - 1))
+            }
         }
         val startMs = calendar.timeInMillis
         val startMonths = calendar.get(Calendar.YEAR) * 12 + calendar.get(Calendar.MONTH)
@@ -167,11 +212,12 @@ class StatsFragment :
                 }
             }
         if (library == null) {
-            return Stats(0, 0, 0, FloatArray(bucketCount), labels, listOf(), listOf())
+            return Stats(0, 0, 0, FloatArray(bucketCount), labels, listOf(), listOf(), listOf())
         }
 
         // How many times each song was played in the range, and the listening time per bar.
         val playsBySong = mutableMapOf<Song, Int>()
+        val lastPlayed = mutableMapOf<Song, Long>()
         val bars = FloatArray(bucketCount)
         val songCache = mutableMapOf<String, Song?>()
         val at = Calendar.getInstance()
@@ -182,13 +228,20 @@ class StatsFragment :
                 } ?: continue
             if (range != Range.ALL) {
                 playsBySong[song] = (playsBySong[song] ?: 0) + 1
+                if (playedAt > (lastPlayed[song] ?: 0L)) lastPlayed[song] = playedAt
             }
             at.timeInMillis = playedAt
             val bucket =
                 if (bucketsAreMonths) {
                     at.get(Calendar.YEAR) * 12 + at.get(Calendar.MONTH) - startMonths
                 } else {
-                    ((playedAt - startMs) / DAY_MS).toInt()
+                    // Count calendar days, so a clock change doesn't push a play into the next bar.
+                    val day = (at.clone() as Calendar)
+                    day.set(Calendar.HOUR_OF_DAY, 0)
+                    day.set(Calendar.MINUTE, 0)
+                    day.set(Calendar.SECOND, 0)
+                    day.set(Calendar.MILLISECOND, 0)
+                    Math.round((day.timeInMillis - startMs) / DAY_MS.toDouble()).toInt()
                 }
             if (bucket in 0 until bucketCount) bars[bucket] += song.durationMs.toFloat()
         }
@@ -197,9 +250,18 @@ class StatsFragment :
             for ((uidString, entry) in playCountRepository.allCounts()) {
                 val song = Music.UID.fromString(uidString)?.let { library.findSong(it) } ?: continue
                 playsBySong[song] = entry.count
+                lastPlayed[song] = entry.lastPlayedMs
             }
         }
 
+        val tracks =
+            playsBySong.entries
+                .sortedWith(
+                    compareByDescending<Map.Entry<Song, Int>> { it.value }
+                        .thenByDescending { lastPlayed[it.key] ?: 0L }
+                )
+                .take(TRACK_LIMITS.max())
+                .map { it.key to it.value }
         val artists =
             playsBySong.entries
                 .groupBy({ it.key.artists.firstOrNull() }, { it.value })
@@ -218,6 +280,7 @@ class StatsFragment :
             songs = playsBySong.size,
             bars = bars,
             labels = labels,
+            tracks = tracks,
             artists = artists,
             albums = albums,
         )
@@ -239,7 +302,11 @@ class StatsFragment :
         binding.statsChart.setData(stats.bars, stats.labels)
         val hasPlays = stats.plays > 0
         binding.statsEmpty.isVisible = !hasPlays
+        lastStats = stats
         listOf(
+                binding.statsTracksHeader,
+                binding.statsTracksCount,
+                binding.statsTracks,
                 binding.statsArtistsHeader,
                 binding.statsArtists,
                 binding.statsAlbumsHeader,
@@ -247,6 +314,7 @@ class StatsFragment :
             )
             .forEach { it.isVisible = hasPlays }
 
+        showTracks(stats)
         val inflater = LayoutInflater.from(context)
         binding.statsArtists.removeAllViews()
         val top = stats.artists.firstOrNull()?.second ?: 1
@@ -274,7 +342,42 @@ class StatsFragment :
         L.d("Showed ${stats.plays} plays for $range")
     }
 
+    /** Fill the Top tracks list with as many songs as the chips ask for. */
+    private fun showTracks(stats: Stats) {
+        val binding = binding ?: return
+        val context = requireContext()
+        val inflater = LayoutInflater.from(context)
+        val shown = stats.tracks.take(trackLimit)
+        val songs = shown.map { it.first }
+        binding.statsTracks.removeAllViews()
+        shown.forEachIndexed { i, (song, plays) ->
+            val row = ItemTopSongBinding.inflate(inflater, binding.statsTracks, false)
+            row.topCover.bind(song)
+            row.topName.text = song.name.resolve(context)
+            row.topInfo.text =
+                context.getString(
+                    R.string.fmt_top_song_info,
+                    song.artists.first().name.resolve(context),
+                    context.getPlural(R.plurals.fmt_play_count, plays),
+                )
+            row.topRank.text = (i + 1).toString()
+            row.topRank.setTextColor(
+                context.getAttrColorCompat(
+                    if (i < 3) androidx.appcompat.R.attr.colorPrimary
+                    else com.google.android.material.R.attr.colorOnSurfaceVariant
+                )
+            )
+            row.root.setOnClickListener { playbackModel.playFromList(song, songs) }
+            row.topMenu.setOnClickListener {
+                listModel.openMenu(R.menu.song, song, homeModel.playWith)
+            }
+            binding.statsTracks.addView(row.root)
+        }
+    }
+
     private companion object {
+        const val KEY_TRACK_LIMIT = "auxio_stats_track_limit"
+        val TRACK_LIMITS = listOf(5, 25, 50)
         const val DAY_MS = 24L * 60 * 60 * 1000
         const val TOP_ARTISTS = 5
         const val TOP_ALBUMS = 3

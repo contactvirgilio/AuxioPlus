@@ -574,6 +574,10 @@
     <string name="lbl_range_year">Year</string>
     <string name="lbl_range_all">All time</string>
     <string name="lbl_listening_time">Listening time</string>
+    <string name="lbl_top_tracks">Top tracks</string>
+    <string name="lbl_top_5">Top 5</string>
+    <string name="lbl_top_25">Top 25</string>
+    <string name="lbl_top_50_count">Top 50</string>
     <string name="lbl_top_artists">Top artists</string>
     <string name="lbl_top_albums">Top albums</string>
     <string name="lng_stats_estimate">Listening time is estimated from plays and song length.</string>

@@ -54,11 +54,13 @@ class HomeSettingsImpl @Inject constructor(@ApplicationContext context: Context)
     override var homeTabs: Array<Tab>
         get() =
             // Older versions saved the tabs as an Int, newer ones need a Long for eight tabs.
-            when (val saved = sharedPreferences.all[getString(R.string.set_key_home_tabs)]) {
-                is Long -> Tab.fromLongCode(saved)
-                is Int -> Tab.fromIntCode(saved)
-                else -> null
-            } ?: unlikelyToBeNull(Tab.fromIntCode(Tab.SEQUENCE_DEFAULT))
+            mergeMostPlayed(
+                when (val saved = sharedPreferences.all[getString(R.string.set_key_home_tabs)]) {
+                    is Long -> Tab.fromLongCode(saved)
+                    is Int -> Tab.fromIntCode(saved)
+                    else -> null
+                } ?: unlikelyToBeNull(Tab.fromIntCode(Tab.SEQUENCE_DEFAULT))
+            )
         set(value) {
             sharedPreferences.edit {
                 putLong(getString(R.string.set_key_home_tabs), Tab.toIntCode(value))
@@ -88,6 +90,25 @@ class HomeSettingsImpl @Inject constructor(@ApplicationContext context: Context)
                 remove(OLD_KEY_LIB_TABS)
             }
         }
+    }
+
+    /**
+     * The Most Played tab now lives inside the Activity tab, so it is never listed. Whoever had it
+     * showing gets Activity showing instead.
+     */
+    private fun mergeMostPlayed(tabs: Array<Tab>): Array<Tab> {
+        val top = tabs.firstOrNull { it.type == MusicType.TOP } ?: return tabs
+        val activityVisible = tabs.any { it.type == MusicType.STATS && it is Tab.Visible }
+        return tabs
+            .mapNotNull {
+                when {
+                    it.type == MusicType.TOP -> null
+                    it.type == MusicType.STATS && top is Tab.Visible && !activityVisible ->
+                        Tab.Visible(MusicType.STATS)
+                    else -> it
+                }
+            }
+            .toTypedArray()
     }
 
     override fun onSettingChanged(key: String, listener: HomeSettings.Listener) {
