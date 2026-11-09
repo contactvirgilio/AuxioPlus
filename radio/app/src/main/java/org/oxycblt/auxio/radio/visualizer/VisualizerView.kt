@@ -1,0 +1,407 @@
+package org.oxycblt.auxio.radio.visualizer
+
+import android.content.Context
+import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.LinearGradient
+import android.graphics.Paint
+import android.graphics.Rect
+import android.graphics.RectF
+import android.graphics.Shader
+import android.os.SystemClock
+import android.util.AttributeSet
+import android.view.View
+import androidx.core.content.res.use
+import androidx.core.graphics.ColorUtils
+import androidx.core.view.isVisible
+import com.google.android.material.R as MR
+import com.google.android.material.color.MaterialColors
+import java.util.Random
+import kotlin.math.abs
+import kotlin.math.max
+import kotlin.math.min
+import org.oxycblt.auxio.radio.NowPlaying
+import org.oxycblt.auxio.radio.R
+
+/**
+ * Draws the playing audio as a bar spectrum, either in the theme colour or with a three-colour
+ * gradient that fades to a new palette on every new song (or every few minutes if the station
+ * doesn't say what is playing). It only does any work while it is on screen.
+ */
+class VisualizerView
+@JvmOverloads
+constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0) :
+    View(context, attrs, defStyleAttr) {
+    private val buffer = VisualizerBuffer
+
+    /** Whether this is the full screen one: always showing and on black. */
+    private val alwaysOn =
+        context.obtainStyledAttributes(attrs, R.styleable.VisualizerView).use {
+            it.getBoolean(R.styleable.VisualizerView_alwaysOn, false)
+        }
+    private var mode = VisualizerMode.SPECTRUM_CYCLE
+    private var acquired = false
+    private var running = false
+    private var lastFrameNanos = 0L
+    private val visibleRect = Rect()
+
+    private val spectrum = Spectrum(FFT_SIZE)
+    private val samples = FloatArray(FFT_SIZE)
+
+    private val backgroundColor =
+        if (alwaysOn) Color.BLACK
+        else MaterialColors.getColor(this, MR.attr.colorSurfaceContainerHigh)
+    private val primaryColor = MaterialColors.getColor(this, androidx.appcompat.R.attr.colorPrimary)
+    private val accentColor = MaterialColors.getColor(this, MR.attr.colorTertiary)
+    private val density = resources.displayMetrics.density
+
+    private val barLevels = FloatArray(MAX_BARS)
+    private val peakLevels = FloatArray(MAX_BARS)
+    private val peakHolds = FloatArray(MAX_BARS)
+    private val peakSpeeds = FloatArray(MAX_BARS)
+    private val barRect = RectF()
+    private val barPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val peakPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val cycleColors = IntArray(3)
+    private val gradientColors = IntArray(3)
+    private var gradientHeight = -1f
+    private val gradientStops = floatArrayOf(0f, 0.55f, 1f)
+
+    private val frame = Runnable { onFrame() }
+
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        update()
+    }
+
+    override fun onWindowVisibilityChanged(visibility: Int) {
+        super.onWindowVisibilityChanged(visibility)
+        // Nothing is drawn while the app is in the background or covered by the full screen page.
+        if (visibility == VISIBLE) update() else stop()
+    }
+
+    override fun onDetachedFromWindow() {
+        super.onDetachedFromWindow()
+        stop()
+    }
+
+    /** Switch between the theme colour and the colour cycling gradient. */
+    fun setMode(newMode: VisualizerMode) {
+        if (newMode != mode) {
+            mode = newMode
+            reset()
+            invalidate()
+        }
+    }
+
+    private fun update() {
+        if (isVisible && isAttachedToWindow && windowVisibility == VISIBLE) start() else stop()
+    }
+
+    private fun start() {
+        if (running) return
+        running = true
+        if (!acquired) {
+            buffer.acquire()
+            acquired = true
+        }
+        lastFrameNanos = 0L
+        removeCallbacks(frame)
+        postOnAnimation(frame)
+    }
+
+    private fun stop() {
+        running = false
+        removeCallbacks(frame)
+        if (acquired) {
+            buffer.release()
+            acquired = false
+        }
+    }
+
+    private fun reset() {
+        barLevels.fill(0f)
+        peakLevels.fill(0f)
+        peakHolds.fill(0f)
+        peakSpeeds.fill(0f)
+    }
+
+    private fun onFrame() {
+        if (!running) return
+        // Pages next to the current one in the cover pager are attached but off screen. Don't
+        // spend any time on them, just check back now and then.
+        if (!isShown || !getGlobalVisibleRect(visibleRect) || width == 0 || height == 0) {
+            lastFrameNanos = 0L
+            postDelayed(frame, IDLE_CHECK_MS)
+            return
+        }
+
+        val now = System.nanoTime()
+        val dt =
+            if (lastFrameNanos == 0L) 1f / 60f
+            else ((now - lastFrameNanos) / 1_000_000_000f).coerceIn(0f, MAX_FRAME_TIME)
+        lastFrameNanos = now
+
+        // When paused, act on silence so the bars settle down instead of freezing.
+        if (!NowPlaying.isPlaying || !buffer.read(samples, FFT_SIZE)) {
+            samples.fill(0f)
+        }
+        updateBars(dt)
+
+        invalidate()
+        postOnAnimation(frame)
+    }
+
+    private val barCount: Int
+        get() = (width / (BAR_SPACING_DP * density)).toInt().coerceIn(MIN_BARS, MAX_BARS)
+
+    private fun updateBars(dt: Float) {
+        spectrum.analyze(samples)
+        val count = barCount
+        val maxFrequency = min(Spectrum.MAX_FREQUENCY, buffer.sampleRate / 2f)
+        for (bar in 0 until count) {
+            val low = Spectrum.logFrequency(bar.toFloat() / count, maxFrequency)
+            val high = Spectrum.logFrequency((bar + 1f) / count, maxFrequency)
+            val target = levelFor(spectrum.peakDecibels(low, high, buffer.sampleRate))
+
+            // Jump up straight away, fall back gradually, like foobar2000.
+            barLevels[bar] =
+                if (target > barLevels[bar]) target
+                else max(target, barLevels[bar] - BAR_FALL_PER_SECOND * dt)
+
+            // Peak caps hold for a moment, then drop with gravity.
+            if (barLevels[bar] >= peakLevels[bar]) {
+                peakLevels[bar] = barLevels[bar]
+                peakHolds[bar] = PEAK_HOLD_SECONDS
+                peakSpeeds[bar] = 0f
+            } else if (peakHolds[bar] > 0f) {
+                peakHolds[bar] -= dt
+            } else {
+                peakSpeeds[bar] += PEAK_GRAVITY * dt
+                peakLevels[bar] = max(barLevels[bar], peakLevels[bar] - peakSpeeds[bar] * dt)
+            }
+        }
+    }
+
+    override fun onDraw(canvas: Canvas) {
+        canvas.drawColor(backgroundColor)
+        val h = height.toFloat()
+        when (mode) {
+            VisualizerMode.SPECTRUM -> {
+                barPaint.shader = null
+                barPaint.color = primaryColor
+                peakPaint.color = accentColor
+            }
+            VisualizerMode.SPECTRUM_CYCLE -> {
+                updateCycleColors()
+                // One gradient over the full height, so only loud bars reach the top colour.
+                // The gradient is only rebuilt when the colours or the height changed.
+                if (
+                    barPaint.shader == null ||
+                        gradientHeight != h ||
+                        !cycleColors.contentEquals(gradientColors)
+                ) {
+                    cycleColors.copyInto(gradientColors)
+                    gradientHeight = h
+                    barPaint.shader =
+                        LinearGradient(
+                            0f,
+                            h,
+                            0f,
+                            0f,
+                            gradientColors.copyOf(),
+                            gradientStops,
+                            Shader.TileMode.CLAMP,
+                        )
+                }
+                peakPaint.color = cycleColors[2]
+            }
+        }
+
+        val count = barCount
+        val slot = width.toFloat() / count
+        val gap = max(1f, slot * 0.2f)
+        val peakHeight = max(2f, 3f * density)
+        for (bar in 0 until count) {
+            val left = bar * slot + gap / 2
+            val right = (bar + 1) * slot - gap / 2
+            if (barLevels[bar] > 0f) {
+                barRect.set(left, h - barLevels[bar] * h, right, h)
+                canvas.drawRect(barRect, barPaint)
+            }
+            val peakTop = (h - peakLevels[bar] * h - peakHeight).coerceAtLeast(0f)
+            barRect.set(left, peakTop, right, peakTop + peakHeight)
+            canvas.drawRect(barRect, peakPaint)
+        }
+    }
+
+    /**
+     * Work out the current three gradient colours: each random palette shows for the interval, then
+     * fades into the next one, which is only picked once it's needed.
+     */
+    private fun updateCycleColors() {
+        if (!paletteReady) {
+            currentPalette = IntArray(3).also { randomPalette(it) }
+            nextPalette = IntArray(3).also { randomPalette(it) }
+            paletteStart = SystemClock.elapsedRealtime()
+            lastSong = NowPlaying.title
+            paletteReady = true
+        }
+        val now = SystemClock.elapsedRealtime()
+        // A new song, or a long time on the same palette, starts a fade into the next one.
+        val song = NowPlaying.title
+        if (song != lastSong || now - paletteStart >= MAX_PALETTE_MS) {
+            lastSong = song
+            if (songFadeStart == 0L) songFadeStart = now
+            paletteStart = now
+        }
+        if (songFadeStart != 0L && now - songFadeStart >= FADE_BETWEEN_PALETTES_MS) {
+            rotatePalettes()
+            songFadeStart = 0L
+        }
+        val t =
+            if (songFadeStart == 0L) 0f
+            else (now - songFadeStart).toFloat() / FADE_BETWEEN_PALETTES_MS
+        for (i in 0 until 3) {
+            cycleColors[i] = ColorUtils.blendARGB(currentPalette[i], nextPalette[i], t)
+        }
+    }
+
+    /** The next palette becomes the current one, and a new random next one is picked. */
+    private fun rotatePalettes() {
+        val done = currentPalette
+        currentPalette = nextPalette
+        nextPalette = done
+        randomPalette(nextPalette)
+    }
+
+    /**
+     * Fill [into] with a brand new random palette of three colours, bottom to top. The hue always
+     * jumps well away from the previous palette so that two in a row never look alike.
+     */
+    private fun randomPalette(into: IntArray) {
+        val roll = random.nextFloat()
+        if (roll < WEIRD_CHANCE) {
+            WEIRD_PALETTES[random.nextInt(WEIRD_PALETTES.size)].copyInto(into)
+            return
+        }
+        if (roll < WEIRD_CHANCE + RARE_CHANCE) {
+            RARE_PALETTES[random.nextInt(RARE_PALETTES.size)].copyInto(into)
+            return
+        }
+        // Everything is random across the whole colour wheel, with no preset colours and no
+        // favourites. Brown is not special: it is dark, muted orange, which turns up as often as
+        // that part of the colour space is big. A palette never starts close to the hue of the
+        // previous one.
+        var hue: Float
+        var tries = 0
+        do {
+            hue = random.nextFloat() * 360f
+            val distance = abs(((hue - lastHue + 540f) % 360f) - 180f)
+        } while (distance < MIN_HUE_JUMP && ++tries < 50)
+        // From nearly the same colour all the way to opposites on the colour wheel.
+        val sweep = (if (random.nextBoolean()) 1f else -1f) * (15f + random.nextFloat() * 90f)
+        val saturation = 0.35f + random.nextFloat() * 0.6f
+        val dark = 0.2f + random.nextFloat() * 0.3f
+        val lift = 0.08f + random.nextFloat() * 0.1f
+        lastHue = hue
+        for (i in 0 until 3) {
+            // Every stop gets a little of its own saturation and lightness, so palettes differ in
+            // more than just their hue.
+            val s = (saturation + (random.nextFloat() - 0.5f) * 0.2f).coerceIn(0.3f, 1f)
+            val l = (dark + i * lift + (random.nextFloat() - 0.5f) * 0.06f).coerceIn(0.15f, 0.8f)
+            into[i] = hsl(hue + i * sweep, s, l)
+        }
+        // Half the time run it light to dark instead of dark to light.
+        if (random.nextBoolean()) {
+            val first = into[0]
+            into[0] = into[2]
+            into[2] = first
+        }
+    }
+
+    /** Map a loudness in decibels to a 0 to 1 level, with [FLOOR_DB] and below being 0. */
+    private fun levelFor(decibels: Float) = ((decibels - FLOOR_DB) / -FLOOR_DB).coerceIn(0f, 1f)
+
+    private companion object {
+        // The palettes are shared by every visualizer, so the small one and the full screen one
+        // always show the same colours at the same moment.
+        val random = Random()
+        var lastHue = random.nextFloat() * 360f
+        var paletteReady = false
+        lateinit var currentPalette: IntArray
+        lateinit var nextPalette: IntArray
+        var paletteStart = 0L
+        var lastSong: String? = null
+        var songFadeStart = 0L
+
+        const val FFT_SIZE = 4096
+        const val FLOOR_DB = -70f
+        const val MIN_BARS = 16
+        const val MAX_BARS = 64
+        const val BAR_SPACING_DP = 7f
+        const val BAR_FALL_PER_SECOND = 1.6f
+        const val PEAK_HOLD_SECONDS = 0.35f
+        const val PEAK_GRAVITY = 3f
+        const val MAX_FRAME_TIME = 0.1f
+        const val IDLE_CHECK_MS = 250L
+        const val MAX_PALETTE_MS = 150_000L
+        const val FADE_BETWEEN_PALETTES_MS = 1500L
+
+        const val MIN_HUE_JUMP = 60f
+
+        /** How often a palette is one of the hand-picked [RARE_PALETTES]: about 1 in 1000. */
+        const val RARE_CHANCE = 0.001f
+
+        /** How often a palette is one of the [WEIRD_PALETTES]: about 1 in 5000. */
+        const val WEIRD_CHANCE = 0.0002f
+
+        /** Hand-picked palettes, bottom to top, that only turn up now and then. */
+        val RARE_PALETTES =
+            arrayOf(
+                // Sunset.
+                intArrayOf(0xFF2B1055.toInt(), 0xFFD53369.toInt(), 0xFFFFB347.toInt()),
+                // Vaporwave.
+                intArrayOf(0xFFFF71CE.toInt(), 0xFFB967FF.toInt(), 0xFF01CDFE.toInt()),
+                // Green, red and gold, like a certain flag.
+                intArrayOf(0xFF006600.toInt(), 0xFFD7141A.toInt(), 0xFFFFCC00.toInt()),
+                // Aurora.
+                intArrayOf(0xFF0B6E4F.toInt(), 0xFF08D9D6.toInt(), 0xFFB8F2E6.toInt()),
+                // Ember.
+                intArrayOf(0xFF1A0000.toInt(), 0xFFC1121F.toInt(), 0xFFFFB703.toInt()),
+            )
+
+        /**
+         * Even rarer palettes that break every rule of the random ones: two-tone, clashing, flat or
+         * faint on purpose.
+         */
+        val WEIRD_PALETTES =
+            arrayOf(
+                // Two-tone: hot pink with a lime tip.
+                intArrayOf(0xFFFF1493.toInt(), 0xFFFF1493.toInt(), 0xFFB6FF00.toInt()),
+                // Two-tone: blood red into ice.
+                intArrayOf(0xFF8B0000.toInt(), 0xFF8B0000.toInt(), 0xFFA7E8FF.toInt()),
+                // Two-tone: deep purple with acid green on top.
+                intArrayOf(0xFF4B0082.toInt(), 0xFF4B0082.toInt(), 0xFF39FF14.toInt()),
+                // Clash: orange, teal, orange.
+                intArrayOf(0xFFFF6A00.toInt(), 0xFF00B3B3.toInt(), 0xFFFF6A00.toInt()),
+                // Black and white, no colour at all.
+                intArrayOf(0xFF303030.toInt(), 0xFF9E9E9E.toInt(), 0xFFFFFFFF.toInt()),
+                // Pastel sweets: bubblegum, mint, lemon.
+                intArrayOf(0xFFFFB3D9.toInt(), 0xFFB3FFE6.toInt(), 0xFFFFF7A8.toInt()),
+                // One flat colour.
+                intArrayOf(0xFFFF00FF.toInt(), 0xFFFF00FF.toInt(), 0xFFFF00FF.toInt()),
+                // Neon green and magenta, fighting.
+                intArrayOf(0xFF00FF00.toInt(), 0xFFFF00FF.toInt(), 0xFF00FF00.toInt()),
+                // Ghost: barely brighter than the background.
+                intArrayOf(0xFF1F1F1F.toInt(), 0xFF2E2E2E.toInt(), 0xFF3D3D3D.toInt()),
+                // Level meter: green, yellow, red.
+                intArrayOf(0xFF00C853.toInt(), 0xFFFFEA00.toInt(), 0xFFFF1744.toInt()),
+                // Trench: black, deep blue, white foam.
+                intArrayOf(0xFF000000.toInt(), 0xFF0D1B6B.toInt(), 0xFFFFFFFF.toInt()),
+            )
+
+        private fun hsl(hue: Float, saturation: Float, lightness: Float) =
+            ColorUtils.HSLToColor(floatArrayOf(((hue % 360f) + 360f) % 360f, saturation, lightness))
+    }
+}

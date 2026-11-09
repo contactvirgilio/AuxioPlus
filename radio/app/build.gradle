@@ -1,0 +1,83 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
+plugins {
+    id "com.android.application"
+}
+
+android {
+    namespace "org.oxycblt.auxio.radio"
+
+    defaultConfig {
+        applicationId namespace
+        versionName "1.0.0"
+        versionCode 1
+
+        minSdk 26
+        compileSdk 36
+        targetSdk 36
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_21
+        targetCompatibility JavaVersion.VERSION_21
+    }
+
+    java {
+        toolchain {
+            languageVersion = JavaLanguageVersion.of(21)
+        }
+    }
+
+    buildTypes {
+        debug {
+            applicationIdSuffix ".debug"
+        }
+        release {
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"
+            dependenciesInfo {
+                includeInApk = false
+                includeInBundle = false
+            }
+        }
+    }
+
+    packagingOptions {
+        resources {
+            excludes += ['DebugProbesKt.bin', 'kotlin-tooling-metadata.json', '**/kotlin/**', 'META-INF/*.version']
+        }
+    }
+
+    buildFeatures {
+        viewBinding true
+    }
+
+    lint {
+        // Media3 marks most of ExoPlayer as unstable API; that's fine for an app.
+        disable 'UnsafeOptInUsageError'
+        checkReleaseBuilds false
+    }
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget = JvmTarget.JVM_21
+    }
+}
+
+dependencies {
+    def media3_version = "1.8.0"
+    implementation "androidx.media3:media3-exoplayer:$media3_version"
+    implementation "androidx.media3:media3-exoplayer-hls:$media3_version"
+    implementation "androidx.media3:media3-session:$media3_version"
+
+    implementation "androidx.core:core-ktx:1.18.0"
+    implementation "androidx.appcompat:appcompat:1.7.1"
+    implementation "androidx.activity:activity-ktx:1.13.0"
+    implementation "androidx.recyclerview:recyclerview:1.4.0"
+    implementation "androidx.lifecycle:lifecycle-runtime-ktx:2.10.0"
+    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2"
+    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-guava:1.10.2"
+    implementation "com.google.android.material:material:1.14.0-alpha10"
+}

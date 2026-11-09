@@ -1,0 +1,76 @@
+name: Build Auxio Radio APK
+
+# Builds the radio app in radio/ whenever it changes, and when run by hand from the Actions tab.
+# It is signed with the same key as AuxioPlus, so every build installs as an update.
+on:
+  push:
+    paths: [ 'radio/**', '.github/workflows/radio.yml' ]
+  pull_request:
+    paths: [ 'radio/**', '.github/workflows/radio.yml' ]
+  workflow_dispatch:
+
+concurrency:
+  group: radio-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build release APK
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: radio
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: gradle
+          cache-dependency-path: radio/**/*.gradle*
+
+      - name: Install SDK packages
+        run: |
+          set -e
+          sdk="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
+          sdkmanager="$(ls "$sdk"/cmdline-tools/*/bin/sdkmanager | sort -V | tail -1)"
+          yes | "$sdkmanager" --sdk_root="$sdk" --licenses > /dev/null || true
+          "$sdkmanager" --sdk_root="$sdk" "build-tools;36.0.0" "platforms;android-36" > /dev/null
+
+      - name: Build release APK
+        run: |
+          chmod +x gradlew
+          set -o pipefail
+          if ! ./gradlew assembleRelease 2>&1 | tee "$RUNNER_TEMP/build.log"; then
+            grep -E "^e: |error:|What went wrong|ERROR:" -A3 "$RUNNER_TEMP/build.log" | head -40 \
+              | while IFS= read -r line; do echo "::error::$line"; done
+            exit 1
+          fi
+
+      - name: Sign the APK
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+        run: |
+          set -e
+          store_pass="${KEYSTORE_PASSWORD:-$(cat ../signing/keystore-password.txt)}"
+          build_tools="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)"
+          unsigned="$(ls app/build/outputs/apk/release/*-unsigned.apk | head -1)"
+          version="$(grep -m1 'versionName' app/build.gradle | sed -E 's/.*"(.*)".*/\1/')"
+          mkdir -p dist
+          out="dist/AuxioRadio-${version}.apk"
+          "$build_tools/zipalign" -f -p 4 "$unsigned" "$RUNNER_TEMP/aligned.apk"
+          "$build_tools/apksigner" sign --ks ../signing/auxioplus-release.jks --ks-pass "pass:$store_pass" \
+            --ks-key-alias auxioplus --key-pass "pass:$store_pass" \
+            --out "$out" "$RUNNER_TEMP/aligned.apk"
+          "$build_tools/apksigner" verify "$out"
+          rm -f "$out.idsig"
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: auxio-radio-apk
+          path: radio/dist/*.apk
+          if-no-files-found: error

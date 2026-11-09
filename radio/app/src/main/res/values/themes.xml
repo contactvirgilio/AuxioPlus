@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- AuxioPlus's Blue theme, black in dark mode. -->
+    <style name="Theme.Radio" parent="Theme.Material3Expressive.DynamicColors.DayNight">
+        <item name="windowActionBar">false</item>
+        <item name="windowNoTitle">true</item>
+        <item name="colorPrimary">@color/blue_primary</item>
+        <item name="colorOnPrimary">@color/blue_onPrimary</item>
+        <item name="colorPrimaryContainer">@color/blue_primaryContainer</item>
+        <item name="colorOnPrimaryContainer">@color/blue_onPrimaryContainer</item>
+        <item name="colorSecondary">@color/blue_secondary</item>
+        <item name="colorOnSecondary">@color/blue_onSecondary</item>
+        <item name="colorSecondaryContainer">@color/blue_secondaryContainer</item>
+        <item name="colorOnSecondaryContainer">@color/blue_onSecondaryContainer</item>
+        <item name="colorTertiary">@color/blue_tertiary</item>
+        <item name="colorOnTertiary">@color/blue_onTertiary</item>
+        <item name="colorTertiaryContainer">@color/blue_tertiaryContainer</item>
+        <item name="colorOnTertiaryContainer">@color/blue_onTertiaryContainer</item>
+        <item name="colorError">@color/blue_error</item>
+        <item name="colorOnError">@color/blue_onError</item>
+        <item name="colorErrorContainer">@color/blue_errorContainer</item>
+        <item name="colorOnErrorContainer">@color/blue_onErrorContainer</item>
+        <item name="android:colorBackground">@color/blue_background</item>
+        <item name="colorOnBackground">@color/blue_onBackground</item>
+        <item name="colorSurface">@color/blue_surface</item>
+        <item name="colorOnSurface">@color/blue_onSurface</item>
+        <item name="colorSurfaceVariant">@color/blue_surfaceVariant</item>
+        <item name="colorOnSurfaceVariant">@color/blue_onSurfaceVariant</item>
+        <item name="colorOutline">@color/blue_outline</item>
+        <item name="colorOutlineVariant">@color/blue_outlineVariant</item>
+        <item name="colorSurfaceInverse">@color/blue_inverseSurface</item>
+        <item name="colorOnSurfaceInverse">@color/blue_inverseOnSurface</item>
+        <item name="colorPrimaryInverse">@color/blue_inversePrimary</item>
+        <item name="colorPrimaryFixed">@color/blue_primaryFixed</item>
+        <item name="colorOnPrimaryFixed">@color/blue_onPrimaryFixed</item>
+        <item name="colorPrimaryFixedDim">@color/blue_primaryFixedDim</item>
+        <item name="colorOnPrimaryFixedVariant">@color/blue_onPrimaryFixedVariant</item>
+        <item name="colorSecondaryFixed">@color/blue_secondaryFixed</item>
+        <item name="colorOnSecondaryFixed">@color/blue_onSecondaryFixed</item>
+        <item name="colorSecondaryFixedDim">@color/blue_secondaryFixedDim</item>
+        <item name="colorOnSecondaryFixedVariant">@color/blue_onSecondaryFixedVariant</item>
+        <item name="colorTertiaryFixed">@color/blue_tertiaryFixed</item>
+        <item name="colorOnTertiaryFixed">@color/blue_onTertiaryFixed</item>
+        <item name="colorTertiaryFixedDim">@color/blue_tertiaryFixedDim</item>
+        <item name="colorOnTertiaryFixedVariant">@color/blue_onTertiaryFixedVariant</item>
+        <item name="colorSurfaceDim">@color/blue_surfaceDim</item>
+        <item name="colorSurfaceBright">@color/blue_surfaceBright</item>
+        <item name="colorSurfaceContainerLowest">@color/blue_surfaceContainerLowest</item>
+        <item name="colorSurfaceContainerLow">@color/blue_surfaceContainerLow</item>
+        <item name="colorSurfaceContainer">@color/blue_surfaceContainer</item>
+        <item name="colorSurfaceContainerHigh">@color/blue_surfaceContainerHigh</item>
+        <item name="colorSurfaceContainerHighest">@color/blue_surfaceContainerHighest</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+    </style>
+
+    <style name="Theme.Radio.Visualizer">
+        <item name="android:windowBackground">@android:color/black</item>
+        <item name="android:windowAnimationStyle">@android:style/Animation.Activity</item>
+    </style>
+</resources>

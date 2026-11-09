@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <declare-styleable name="VisualizerView">
+        <!-- The full screen one: on black instead of the theme surface. -->
+        <attr name="alwaysOn" format="boolean" />
+    </declare-styleable>
+</resources>

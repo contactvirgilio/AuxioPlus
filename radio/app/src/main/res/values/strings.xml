@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Auxio Radio</string>
+    <string name="lbl_favorites">Favorites</string>
+    <string name="lbl_search">Search</string>
+    <string name="lbl_add_url">Add URL</string>
+    <string name="lbl_edit">Edit station</string>
+    <string name="lbl_remove">Remove</string>
+    <string name="lbl_save">Save</string>
+    <string name="lbl_more">More</string>
+    <string name="lbl_favorite">Add to favorites</string>
+    <string name="lbl_unfavorite">Remove from favorites</string>
+    <string name="lbl_name">Name</string>
+    <string name="lbl_stream_url">Stream URL</string>
+    <string name="lbl_logo_url">Logo URL (optional)</string>
+    <string name="lbl_search_hint">Search stations</string>
+    <string name="lbl_playing">Playing</string>
+    <string name="lbl_buffering">Buffering…</string>
+    <string name="lbl_stopped">Stopped</string>
+    <string name="lbl_error">Can\'t play this stream</string>
+    <string name="lbl_volume">Volume</string>
+    <string name="lbl_brightness">Brightness</string>
+    <string name="desc_play">Play</string>
+    <string name="desc_pause">Stop</string>
+    <string name="desc_play_pause">Play / stop</string>
+    <string name="desc_prev">Previous station</string>
+    <string name="desc_next">Next station</string>
+    <string name="lng_favorite_added">Added to favorites</string>
+    <string name="lng_favorite_removed">Removed from favorites</string>
+    <string name="lng_no_favorites">No favorites yet.\nSearch for a station, or add one with Add URL.</string>
+    <string name="lng_no_results">No stations found</string>
+    <string name="lng_search_failed">Couldn\'t reach the station directory. Check your connection.</string>
+    <string name="err_url">Enter a link starting with http:// or https://</string>
+</resources>

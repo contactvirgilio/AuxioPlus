@@ -7,8 +7,11 @@ name: Build AuxioPlus APK
 # an update over the previous one. Its password is read from the KEYSTORE_PASSWORD repository
 # secret if set, otherwise from signing/keystore-password.txt.
 on:
+  # The radio app has its own workflow.
   push:
+    paths-ignore: [ 'radio/**', '.github/workflows/radio.yml' ]
   pull_request:
+    paths-ignore: [ 'radio/**', '.github/workflows/radio.yml' ]
   release:
     types: [ published ]
   workflow_dispatch:
