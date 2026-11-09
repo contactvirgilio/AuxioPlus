@@ -220,7 +220,7 @@ class MusicPreferenceFragment : BasePreferenceFragment(R.xml.preferences_music) 
             } else if (found.choice) {
                 showRestoreChoice(found)
             } else {
-                runRestore(found, playlists = true, favorites = true, activity = true)
+                runRestore(found, playlists = true, favorites = true, activity = true, palettes = true)
             }
         }
     }
@@ -241,6 +241,10 @@ class MusicPreferenceFragment : BasePreferenceFragment(R.xml.preferences_music) 
             labels += getString(R.string.set_restore_activity, it.plays.size)
             parts += PART_ACTIVITY
         }
+        if (found.palettes.isNotEmpty()) {
+            labels += getString(R.string.set_restore_palettes, found.palettes.size)
+            parts += PART_PALETTES
+        }
         val checked = BooleanArray(labels.size) { true }
         MaterialAlertDialogBuilder(requireContext())
             .setTitle(R.string.set_restore_choose)
@@ -254,6 +258,7 @@ class MusicPreferenceFragment : BasePreferenceFragment(R.xml.preferences_music) 
                     playlists = PART_PLAYLISTS in chosen,
                     favorites = PART_FAVORITES in chosen,
                     activity = PART_ACTIVITY in chosen,
+                    palettes = PART_PALETTES in chosen,
                 )
             }
             .setNegativeButton(android.R.string.cancel, null)
@@ -265,7 +270,11 @@ class MusicPreferenceFragment : BasePreferenceFragment(R.xml.preferences_music) 
         playlists: Boolean,
         favorites: Boolean,
         activity: Boolean,
+        palettes: Boolean,
     ) {
+        if (palettes && found.palettes.isNotEmpty()) {
+            backupRestorer.restorePalettes(found.palettes)
+        }
         if (playlists && found.playlistUris.isNotEmpty()) {
             // Shows its own progress on the restore button.
             musicModel.importPlaylistFiles(found.playlistUris, nameSingleFile = false)
@@ -337,6 +346,7 @@ class MusicPreferenceFragment : BasePreferenceFragment(R.xml.preferences_music) 
         const val PART_PLAYLISTS = 1
         const val PART_FAVORITES = 2
         const val PART_ACTIVITY = 3
+        const val PART_PALETTES = 4
         val RESTORE_EXTRA_MIME_TYPES = arrayOf("text/csv", "text/plain", "text/comma-separated-values")
     }
 }

@@ -38,6 +38,10 @@
         app:key="@string/set_key_visualizer_interval"
         app:title="@string/set_visualizer_interval" />
 
+    <Preference
+        app:key="@string/set_key_palette_collection"
+        app:title="@string/set_palette_collection" />
+
     <SwitchPreferenceCompat
         app:defaultValue="true"
         app:key="@string/set_key_round_mode"

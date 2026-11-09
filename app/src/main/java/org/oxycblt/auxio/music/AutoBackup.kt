@@ -178,6 +178,15 @@ constructor(
         zip.write(favorites.toString().toByteArray())
         zip.closeEntry()
 
+        // The palettes the user has found in the visualizer.
+        zip.putNextEntry(ZipEntry(BackupRestorer.PALETTES_ENTRY))
+        val palettes = StringBuilder("${BackupRestorer.PALETTES_HEADER} 1\n")
+        for (id in org.oxycblt.auxio.playback.visualizer.PaletteCollection.get(context).seen()) {
+            palettes.append(id).append('\n')
+        }
+        zip.write(palettes.toString().toByteArray())
+        zip.closeEntry()
+
         // Activity: every counted play, and every song's total count.
         zip.putNextEntry(ZipEntry(BackupRestorer.ACTIVITY_ENTRY))
         val activity = StringBuilder("${BackupRestorer.ACTIVITY_HEADER} 1\n")

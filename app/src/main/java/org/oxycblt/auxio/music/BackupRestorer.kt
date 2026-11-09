@@ -68,10 +68,15 @@ constructor(
         val playlists: Int,
         val favorites: List<String>,
         val activity: Activity?,
+        val palettes: List<String>,
         val choice: Boolean,
     ) {
         val isEmpty: Boolean
-            get() = playlistUris.isEmpty() && favorites.isEmpty() && activity == null
+            get() =
+                playlistUris.isEmpty() &&
+                    favorites.isEmpty() &&
+                    activity == null &&
+                    palettes.isEmpty()
     }
 
     suspend fun read(uris: List<Uri>): Contents {
@@ -81,6 +86,7 @@ constructor(
         val plays = mutableListOf<Pair<String, Long>>()
         val counts = mutableListOf<Triple<String, Int, Long>>()
         var hasActivity = false
+        val palettes = mutableListOf<String>()
         var choice = false
         for (uri in uris) {
             try {
@@ -99,11 +105,16 @@ constructor(
                         hasActivity = true
                         choice = true
                     }
+                    parts.palettes?.let {
+                        palettes += parseFavorites(it)
+                        choice = true
+                    }
                 } else {
                     val text = readText(uri) ?: continue
                     val header = text.lineSequence().firstOrNull().orEmpty()
                     when {
                         header.startsWith(FAVORITES_HEADER) -> favorites += parseFavorites(text)
+                        header.startsWith(PALETTES_HEADER) -> palettes += parseFavorites(text)
                         header.startsWith(ACTIVITY_HEADER) -> {
                             parseActivity(text, plays, counts)
                             hasActivity = true
@@ -123,6 +134,7 @@ constructor(
             playlists,
             favorites,
             if (hasActivity) Activity(plays, counts) else null,
+            palettes,
             choice,
         )
     }
@@ -132,6 +144,10 @@ constructor(
         val songs = resolve(paths).filterNotNull()
         return favoritesRepository.addAll(songs.map { it.uid })
     }
+
+    /** @return How many palettes were newly added to the collection. */
+    fun restorePalettes(ids: List<String>) =
+        org.oxycblt.auxio.playback.visualizer.PaletteCollection.get(context).merge(ids)
 
     /** @return How many plays were added to the play log. */
     fun restoreActivity(activity: Activity): Int {
@@ -171,13 +187,20 @@ constructor(
             .joinToString("/")
             .lowercase()
 
-    private class ZipParts(val playlists: Int, val favorites: String?, val activity: String?)
+    private class ZipParts(
+        val playlists: Int,
+        val favorites: String?,
+        val activity: String?,
+        val palettes: String?,
+    )
 
     private fun readZip(uri: Uri): ZipParts {
         var playlists = 0
         var favorites: String? = null
         var activity: String? = null
-        val input = context.contentResolver.openInputStream(uri) ?: return ZipParts(0, null, null)
+        var palettes: String? = null
+        val input =
+            context.contentResolver.openInputStream(uri) ?: return ZipParts(0, null, null, null)
         ZipInputStream(input.buffered()).use { zip ->
             var entry = zip.nextEntry
             while (entry != null) {
@@ -186,6 +209,7 @@ constructor(
                     when {
                         name == FAVORITES_ENTRY -> favorites = String(zip.readBytes())
                         name == ACTIVITY_ENTRY -> activity = String(zip.readBytes())
+                        name == PALETTES_ENTRY -> palettes = String(zip.readBytes())
                         name.endsWith(".m3u") || name.endsWith(".m3u8") -> playlists++
                     }
                 }
@@ -193,7 +217,7 @@ constructor(
                 entry = zip.nextEntry
             }
         }
-        return ZipParts(playlists, favorites, activity)
+        return ZipParts(playlists, favorites, activity, palettes)
     }
 
     private fun readText(uri: Uri): String? =
@@ -231,6 +255,8 @@ constructor(
     companion object {
         const val FAVORITES_HEADER = "#auxio-favorites"
         const val ACTIVITY_HEADER = "#auxio-activity"
+        const val PALETTES_HEADER = "#auxio-palettes"
+        const val PALETTES_ENTRY = "auxio/palettes.txt"
         const val FAVORITES_ENTRY = "auxio/favorites.txt"
         const val ACTIVITY_ENTRY = "auxio/activity.csv"
         private const val MAX_TEXT_BYTES = 50 * 1024 * 1024

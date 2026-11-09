@@ -93,6 +93,19 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
     private var gradientHeight = -1f
     private val gradientStops = floatArrayOf(0f, 0.55f, 1f)
 
+    /** Called when a rare or weird palette shows up, so the full screen page can say so. */
+    var onPresetShown: ((Preset) -> Unit)? = null
+
+    private var announced: Preset? = null
+    private var sparkleUntil = 0L
+    private val sparkX = FloatArray(MAX_SPARKS)
+    private val sparkY = FloatArray(MAX_SPARKS)
+    private val sparkVx = FloatArray(MAX_SPARKS)
+    private val sparkVy = FloatArray(MAX_SPARKS)
+    private val sparkLife = FloatArray(MAX_SPARKS)
+    private val sparkPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.WHITE }
+    private var sparkDt = 1f / 60f
+
     private val frame = Runnable { onFrame() }
 
     init {
@@ -164,6 +177,36 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
         }
     }
 
+    private fun announce(preset: Preset) {
+        PaletteCollection.get(context).add(preset.id)
+        if (!preset.weird) sparkleUntil = SystemClock.elapsedRealtime() + SPARKLE_MS
+        onPresetShown?.invoke(preset)
+    }
+
+    /** Throw a few sparks off the peak caps while a rare palette is fresh. */
+    private fun drawSparks(canvas: Canvas, h: Float, slot: Float, count: Int) {
+        val sparkling = SystemClock.elapsedRealtime() < sparkleUntil
+        val size = max(1.5f, 1.5f * density)
+        for (i in 0 until MAX_SPARKS) {
+            if (sparkLife[i] <= 0f) {
+                if (!sparkling || random.nextFloat() > 0.3f) continue
+                val bar = random.nextInt(count)
+                sparkX[i] = bar * slot + slot / 2
+                sparkY[i] = h - peakLevels[bar] * h
+                sparkVx[i] = (random.nextFloat() - 0.5f) * 60f * density
+                sparkVy[i] = -(20f + random.nextFloat() * 70f) * density
+                sparkLife[i] = 1f
+            }
+            sparkX[i] += sparkVx[i] * sparkDt
+            sparkY[i] += sparkVy[i] * sparkDt
+            sparkVy[i] += 120f * density * sparkDt
+            sparkLife[i] -= sparkDt * 1.6f
+            if (sparkLife[i] <= 0f) continue
+            sparkPaint.alpha = (sparkLife[i] * 255).toInt().coerceIn(0, 255)
+            canvas.drawCircle(sparkX[i], sparkY[i], size, sparkPaint)
+        }
+    }
+
     private fun reset() {
         barLevels.fill(0f)
         peakLevels.fill(0f)
@@ -191,6 +234,7 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
         if (!playbackManager.progression.isPlaying || !buffer.read(samples, FFT_SIZE)) {
             samples.fill(0f)
         }
+        sparkDt = dt
         updateBars(dt)
 
         invalidate()
@@ -278,6 +322,7 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
             barRect.set(left, peakTop, right, peakTop + peakHeight)
             canvas.drawRect(barRect, peakPaint)
         }
+        if (mode == VisualizerMode.SPECTRUM_CYCLE) drawSparks(canvas, h, slot, count)
     }
 
     /**
@@ -286,8 +331,10 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
      */
     private fun updateCycleColors() {
         if (!paletteReady) {
-            currentPalette = IntArray(3).also { randomPalette(it) }
-            nextPalette = IntArray(3).also { randomPalette(it) }
+            currentPalette = IntArray(3)
+            currentPreset = randomPalette(currentPalette)
+            nextPalette = IntArray(3)
+            nextPreset = randomPalette(nextPalette)
             paletteStart = SystemClock.elapsedRealtime()
             paletteReady = true
         }
@@ -327,29 +374,38 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
         for (i in 0 until 3) {
             cycleColors[i] = ColorUtils.blendARGB(currentPalette[i], nextPalette[i], t)
         }
+        // A preset counts as seen once it's more than half faded in.
+        val showing = if (t >= 0.5f) nextPreset else currentPreset
+        if (showing !== announced) {
+            announced = showing
+            if (showing != null) announce(showing)
+        }
     }
 
     /** The next palette becomes the current one, and a new random next one is picked. */
     private fun rotatePalettes() {
         val done = currentPalette
         currentPalette = nextPalette
+        currentPreset = nextPreset
         nextPalette = done
-        randomPalette(nextPalette)
+        nextPreset = randomPalette(nextPalette)
     }
 
     /**
      * Fill [into] with a brand new random palette of three colours, bottom to top. The hue always
      * jumps well away from the previous palette so that two in a row never look alike.
      */
-    private fun randomPalette(into: IntArray) {
+    private fun randomPalette(into: IntArray): Preset? {
         val roll = random.nextFloat()
         if (roll < WEIRD_CHANCE) {
-            WEIRD_PALETTES[random.nextInt(WEIRD_PALETTES.size)].copyInto(into)
-            return
+            return Presets.WEIRD[random.nextInt(Presets.WEIRD.size)].also {
+                it.colors.copyInto(into)
+            }
         }
         if (roll < WEIRD_CHANCE + RARE_CHANCE) {
-            RARE_PALETTES[random.nextInt(RARE_PALETTES.size)].copyInto(into)
-            return
+            return Presets.RARE[random.nextInt(Presets.RARE.size)].also {
+                it.colors.copyInto(into)
+            }
         }
         // Everything is random across the whole colour wheel, with no preset colours and no
         // favourites. Brown is not special: it is dark, muted orange, which turns up as often as
@@ -380,6 +436,7 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
             into[0] = into[2]
             into[2] = first
         }
+        return null
     }
 
     /** Map a loudness in decibels to a 0 to 1 level, with [FLOOR_DB] and below being 0. */
@@ -393,6 +450,8 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
         var paletteReady = false
         lateinit var currentPalette: IntArray
         lateinit var nextPalette: IntArray
+        var currentPreset: Preset? = null
+        var nextPreset: Preset? = null
         var paletteStart = 0L
         var lastSong: org.oxycblt.musikr.Music.UID? = null
         var songFadeStart = 0L
@@ -412,56 +471,15 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
 
         const val MIN_HUE_JUMP = 60f
 
-        /** How often a palette is one of the hand-picked [RARE_PALETTES]: about 1 in 1000. */
+        /** How often a palette is one of the hand-picked rare ones: about 1 in 1000. */
         const val RARE_CHANCE = 0.001f
 
-        /** How often a palette is one of the [WEIRD_PALETTES]: about 1 in 5000. */
+        /** How often a palette is one of the weird ones: about 1 in 5000. */
         const val WEIRD_CHANCE = 0.0002f
 
-        /** Hand-picked palettes, bottom to top, that only turn up now and then. */
-        val RARE_PALETTES =
-            arrayOf(
-                // Sunset.
-                intArrayOf(0xFF2B1055.toInt(), 0xFFD53369.toInt(), 0xFFFFB347.toInt()),
-                // Vaporwave.
-                intArrayOf(0xFFFF71CE.toInt(), 0xFFB967FF.toInt(), 0xFF01CDFE.toInt()),
-                // Green, red and gold, like a certain flag.
-                intArrayOf(0xFF006600.toInt(), 0xFFD7141A.toInt(), 0xFFFFCC00.toInt()),
-                // Aurora.
-                intArrayOf(0xFF0B6E4F.toInt(), 0xFF08D9D6.toInt(), 0xFFB8F2E6.toInt()),
-                // Ember.
-                intArrayOf(0xFF1A0000.toInt(), 0xFFC1121F.toInt(), 0xFFFFB703.toInt()),
-            )
-
-        /**
-         * Even rarer palettes that break every rule of the random ones: two-tone, clashing, flat or
-         * faint on purpose.
-         */
-        val WEIRD_PALETTES =
-            arrayOf(
-                // Two-tone: hot pink with a lime tip.
-                intArrayOf(0xFFFF1493.toInt(), 0xFFFF1493.toInt(), 0xFFB6FF00.toInt()),
-                // Two-tone: blood red into ice.
-                intArrayOf(0xFF8B0000.toInt(), 0xFF8B0000.toInt(), 0xFFA7E8FF.toInt()),
-                // Two-tone: deep purple with acid green on top.
-                intArrayOf(0xFF4B0082.toInt(), 0xFF4B0082.toInt(), 0xFF39FF14.toInt()),
-                // Clash: orange, teal, orange.
-                intArrayOf(0xFFFF6A00.toInt(), 0xFF00B3B3.toInt(), 0xFFFF6A00.toInt()),
-                // Black and white, no colour at all.
-                intArrayOf(0xFF303030.toInt(), 0xFF9E9E9E.toInt(), 0xFFFFFFFF.toInt()),
-                // Pastel sweets: bubblegum, mint, lemon.
-                intArrayOf(0xFFFFB3D9.toInt(), 0xFFB3FFE6.toInt(), 0xFFFFF7A8.toInt()),
-                // One flat colour.
-                intArrayOf(0xFFFF00FF.toInt(), 0xFFFF00FF.toInt(), 0xFFFF00FF.toInt()),
-                // Neon green and magenta, fighting.
-                intArrayOf(0xFF00FF00.toInt(), 0xFFFF00FF.toInt(), 0xFF00FF00.toInt()),
-                // Ghost: barely brighter than the background.
-                intArrayOf(0xFF1F1F1F.toInt(), 0xFF2E2E2E.toInt(), 0xFF3D3D3D.toInt()),
-                // Level meter: green, yellow, red.
-                intArrayOf(0xFF00C853.toInt(), 0xFFFFEA00.toInt(), 0xFFFF1744.toInt()),
-                // Trench: black, deep blue, white foam.
-                intArrayOf(0xFF000000.toInt(), 0xFF0D1B6B.toInt(), 0xFFFFFFFF.toInt()),
-            )
+        const val ANNOUNCE_MS = 2000L
+        const val SPARKLE_MS = 2200L
+        const val MAX_SPARKS = 80
 
         private fun hsl(hue: Float, saturation: Float, lightness: Float) =
             ColorUtils.HSLToColor(floatArrayOf(((hue % 360f) + 360f) % 360f, saturation, lightness))

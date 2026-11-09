@@ -22,6 +22,7 @@ import android.media.AudioManager
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
+import android.view.HapticFeedbackConstants
 import android.view.GestureDetector
 import android.view.MotionEvent
 import android.view.ViewConfiguration
@@ -72,6 +73,7 @@ class VisualizerActivity : AppCompatActivity() {
     }
     private var showProgress = true
     private val hideLevel = Runnable { binding.visualizerLevel.animate().alpha(0f).start() }
+    private val hidePalette = Runnable { binding.visualizerPalette.animate().alpha(0f).setDuration(500).start() }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -89,6 +91,21 @@ class VisualizerActivity : AppCompatActivity() {
         WindowInsetsControllerCompat(window, binding.root).apply {
             systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
             hide(WindowInsetsCompat.Type.systemBars())
+        }
+
+        // A rare or weird palette shows its name for a moment and gives a double tap of haptics.
+        binding.visualizerFull.onPresetShown = { preset ->
+            val label = binding.visualizerPalette
+            label.text = preset.name
+            label.removeCallbacks(hidePalette)
+            label.animate().cancel()
+            label.animate().alpha(1f).setDuration(500).start()
+            label.postDelayed(hidePalette, 2000L)
+            label.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+            label.postDelayed(
+                { label.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS) },
+                160L,
+            )
         }
 
         showProgress = preferences.getBoolean(KEY_PILL_PROGRESS, true)

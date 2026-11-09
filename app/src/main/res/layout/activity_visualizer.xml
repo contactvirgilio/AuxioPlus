@@ -27,6 +27,17 @@
         android:textColor="#FFFFFF"
         android:textSize="14sp" />
 
+    <TextView
+        android:id="@+id/visualizer_palette"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top|center_horizontal"
+        android:layout_marginTop="104dp"
+        android:alpha="0"
+        android:letterSpacing="0.05"
+        android:textColor="#FFFFFF"
+        android:textSize="18sp" />
+
     <org.oxycblt.auxio.ui.MarqueeTextView
         android:id="@+id/visualizer_pill"
         android:layout_width="wrap_content"

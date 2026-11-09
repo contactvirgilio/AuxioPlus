@@ -249,6 +249,13 @@
     <string name="lbl_volume">Volume</string>
     <string name="lbl_brightness">Brightness</string>
     <string name="set_visualizer_interval">Colour change interval</string>
+    <string name="set_palette_collection">Palettes discovered</string>
+    <string name="fmt_palette_summary">Rare %1$d of %2$d · Weird %3$d of %4$d</string>
+    <string name="lbl_palettes_rare">Rare</string>
+    <string name="lbl_palettes_weird">Weird</string>
+    <string name="fmt_palette_count">%1$s · %2$d of %3$d</string>
+    <string name="lbl_palette_hint">Tap a palette</string>
+    <string name="lbl_palette_unknown">Not found yet</string>
     <string name="set_visualizer_interval_60">Every minute</string>
     <string name="set_visualizer_interval_150">Every 2.5 minutes</string>
     <string name="set_visualizer_interval_300">Every 5 minutes</string>
@@ -544,6 +551,7 @@
     <string name="set_restore_playlists">Playlists (%d)</string>
     <string name="set_restore_favorites">Favorites (%d songs)</string>
     <string name="set_restore_activity">Activity and Most Played (%d plays)</string>
+    <string name="set_restore_palettes">Palette collection (%d found)</string>
     <string name="set_restore_go">Restore</string>
     <string name="fmt_restored">Restored %1$d favorites and %2$d plays</string>
     <string name="err_restore_nothing">Nothing to restore in that file</string>
