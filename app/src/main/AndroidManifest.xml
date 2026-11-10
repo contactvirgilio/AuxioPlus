@@ -88,6 +88,7 @@
         <activity
             android:name=".playback.visualizer.VisualizerActivity"
             android:exported="false"
+            android:screenOrientation="fullSensor"
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
             android:theme="@style/Theme.Auxio.App" />
 
