@@ -62,6 +62,7 @@ Auxio is a local music player with a fast, reliable UI/UX without the many usele
 <p align="center">
     <img src="screenshots/albums.png" width=250>
     <img src="screenshots/activity.png" width=250>
+    <img src="screenshots/now-playing.png" width=250>
     <img src="screenshots/visualizer.png" width=250>
 </p>
 
