@@ -15,14 +15,42 @@
 </p>
 <h4 align="center"><a href="/CHANGELOG.md">Changelog</a> | <a href="https://github.com/OxygenCobalt/Auxio/wiki">Wiki</a> | <a href="https://github.com/OxygenCobalt/Auxio#Donate">Donate</a></h4>
 <p align="center">
-    <a href="https://f-droid.org/app/org.oxycblt.auxio"><img src="https://fdroid.gitlab.io/artwork/badge/get-it-on.png" width="250"></a>
-    <a href="https://accrescent.app/app/org.oxycblt.auxio">
-        <img alt="Get it on Accrescent" src="https://accrescent.app/badges/get-it-on.png" width="250">
-    </a>
-</p>
-<p align="center">
     <a href="https://hosted.weblate.org/engage/auxio/"><img height=64 src="https://hosted.weblate.org/widgets/auxio/-/strings/287x66-grey.png" alt="Translation status" /></a>
 </p>
+
+> **This is a personal fork of [Auxio](https://github.com/OxygenCobalt/Auxio) by Alexander Capehart, based on v4.1.5.**
+> It is built for my own use and is not affiliated with or supported by the original project.
+> Please don't report issues from this fork to upstream. Original app: [Auxio](https://github.com/OxygenCobalt/Auxio).
+
+## What's different in AuxioPlus
+
+**Visualizer**
+- One visualizer, with a small version in Now Playing
+- Double-tap to open it fullscreen
+- Fullscreen gestures: tap to play/pause, double-tap left or right for previous or next, swipe up or down on the left for brightness and on the right for volume, hold the middle to favorite
+- Rotates with the sensor even when auto-rotate is off
+- Colours are random and change every 1, 2.5 or 5 minutes, or every song
+- Rare and weird easter egg palettes, each shown by name when it appears
+- Rare palettes sparkle
+- A collection in Settings that tracks the palettes you've discovered
+- A progress fill in the pill at the bottom, tap to turn it on or off
+
+**Library**
+- Pinch to zoom Albums and Artists between list, small tiles and big tiles
+- Favorites tab with a heart in Now Playing, the song menu and fullscreen
+- No duplicate songs in a playlist
+- "Add all to favorites" for playlists
+
+**Activity**
+- Listening time, plays and a chart for the week, month, year or all time
+- Weeks start on Monday
+- Top tracks (5, 25 or 50), top artists and top albums for each period
+- Replaces the old Most Played tab
+
+**Backup**
+- Pick one backup folder, used directly
+- One zip with playlists, favorites, activity and discovered palettes
+- One restore button that lets you choose what to bring back
 
 ## About
 
