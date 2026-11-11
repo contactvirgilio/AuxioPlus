@@ -45,7 +45,6 @@
 - Listening time, plays and a chart for the week, month, year or all time
 - Weeks start on Monday
 - Top tracks (5, 25 or 50), top artists and top albums for each period
-- Replaces the old Most Played tab
 
 **Backup**
 - Pick one backup folder, used directly
