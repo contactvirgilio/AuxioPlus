@@ -254,6 +254,7 @@
     <string name="lbl_palettes_legendary">Legendary</string>
     <string name="lbl_palettes_unique">Unique</string>
     <string name="fmt_palette_count">%1$s · %2$d of %3$d</string>
+    <string name="lbl_apply_now">Apply now</string>
     <string name="lbl_palette_hint">Tap a palette</string>
     <string name="lbl_palette_unknown">Not found yet</string>
     <string name="set_visualizer_interval_60">Every minute</string>

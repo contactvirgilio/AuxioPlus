@@ -364,7 +364,15 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
     private fun updateCycleColors() {
         if (!paletteReady) {
             currentPalette = IntArray(Ramp.SIZE)
-            currentPreset = randomPalette(currentPalette)
+            val pending = pendingPreset
+            pendingPreset = null
+            currentPreset =
+                if (pending != null) {
+                    Ramp.fill(currentPalette, pending.colors, pending.banded)
+                    pending
+                } else {
+                    randomPalette(currentPalette)
+                }
             nextPalette = IntArray(Ramp.SIZE)
             nextPreset = randomPalette(nextPalette)
             paletteStart = SystemClock.elapsedRealtime()
@@ -485,7 +493,7 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
     /** Map a loudness in decibels to a 0 to 1 level, with [FLOOR_DB] and below being 0. */
     private fun levelFor(decibels: Float) = ((decibels - FLOOR_DB) / -FLOOR_DB).coerceIn(0f, 1f)
 
-    private companion object {
+    companion object {
         // The palettes are shared by every visualizer, so the small one and the full screen one
         // always show the same colours at the same moment.
         val random = Random()
@@ -495,6 +503,23 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
         lateinit var currentPalette: IntArray
         lateinit var nextPalette: IntArray
         var currentPreset: Preset? = null
+        private var pendingPreset: Preset? = null
+
+        /**
+         * Switch every visualizer to [preset] right away. It stays for one colour interval (or
+         * until the next song), then the random palettes carry on as usual.
+         */
+        fun applyPreset(preset: Preset) {
+            if (!paletteReady) {
+                // Nothing has been drawn yet: start with it.
+                pendingPreset = preset
+                return
+            }
+            Ramp.fill(currentPalette, preset.colors, preset.banded)
+            currentPreset = preset
+            paletteStart = SystemClock.elapsedRealtime()
+            songFadeStart = 0L
+        }
         var nextPreset: Preset? = null
         var paletteStart = 0L
         var lastSong: org.oxycblt.musikr.Music.UID? = null

@@ -21,15 +21,19 @@ package org.oxycblt.auxio.settings.categories
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.view.View
+import android.widget.FrameLayout
 import android.widget.GridLayout
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 import androidx.navigation.fragment.findNavController
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import org.oxycblt.auxio.playback.visualizer.PalettePreviewView
 import org.oxycblt.auxio.playback.visualizer.PaletteCollection
 import org.oxycblt.auxio.playback.visualizer.Preset
 import org.oxycblt.auxio.playback.visualizer.Presets
+import org.oxycblt.auxio.playback.visualizer.Tier
+import org.oxycblt.auxio.playback.visualizer.VisualizerView
 import org.oxycblt.auxio.util.getAttrColorCompat
 import androidx.preference.Preference
 import dagger.hilt.android.AndroidEntryPoint
@@ -140,8 +144,12 @@ class UIPreferenceFragment : BasePreferenceFragment(R.xml.preferences_ui) {
                             }
                         contentDescription = if (found) preset.name else null
                         setOnClickListener {
-                            hint.text =
-                                if (found) preset.name else getString(R.string.lbl_palette_unknown)
+                            if (found) {
+                                hint.setText(R.string.lbl_palette_hint)
+                                showPreview(preset)
+                            } else {
+                                hint.setText(R.string.lbl_palette_unknown)
+                            }
                         }
                     }
                 grid.addView(
@@ -165,6 +173,39 @@ class UIPreferenceFragment : BasePreferenceFragment(R.xml.preferences_ui) {
             .setTitle(R.string.set_palette_collection)
             .setView(ScrollView(context).apply { addView(root) })
             .setPositiveButton(android.R.string.ok, null)
+            .show()
+    }
+
+    /** A moving preview of a palette that has been found, with a way to use it right now. */
+    private fun showPreview(preset: Preset) {
+        val context = requireContext()
+        val density = resources.displayMetrics.density
+        val preview = PalettePreviewView(context).apply { show(preset) }
+        val frame =
+            FrameLayout(context).apply {
+                setPadding((24 * density).toInt(), (12 * density).toInt(), (24 * density).toInt(), 0)
+                addView(
+                    preview,
+                    FrameLayout.LayoutParams(
+                        FrameLayout.LayoutParams.MATCH_PARENT,
+                        (170 * density).toInt(),
+                    ),
+                )
+            }
+        MaterialAlertDialogBuilder(context)
+            .setTitle(preset.name)
+            .setMessage(
+                when (preset.tier) {
+                    Tier.RARE -> R.string.lbl_palettes_rare
+                    Tier.LEGENDARY -> R.string.lbl_palettes_legendary
+                    Tier.UNIQUE -> R.string.lbl_palettes_unique
+                }
+            )
+            .setView(frame)
+            .setPositiveButton(R.string.lbl_apply_now) { _, _ ->
+                VisualizerView.applyPreset(preset)
+            }
+            .setNegativeButton(R.string.lbl_cancel, null)
             .show()
     }
 
