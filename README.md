@@ -31,7 +31,7 @@
 - Rotates with the sensor even when auto-rotate is off
 - Colours are random and change every 1, 2.5 or 5 minutes, or every song
 - 100 hand-picked easter egg palettes in three tiers (rare, legendary and unique), each shown by name when it appears
-- Rare and legendary palettes sparkle
+- They sparkle when they appear, more so the rarer the tier
 - A collection in Settings that tracks the palettes you've discovered
 - A progress fill in the pill at the bottom, tap to turn it on or off
 

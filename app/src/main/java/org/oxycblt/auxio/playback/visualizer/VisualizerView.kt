@@ -108,6 +108,8 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
     private val sparkLife = FloatArray(MAX_SPARKS)
     private val sparkPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.WHITE }
     private var sparkDt = 1f / 60f
+    private var sparkLimit = 0
+    private var sparkRate = 0f
 
     private val frame = Runnable { onFrame() }
 
@@ -182,17 +184,34 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
 
     private fun announce(preset: Preset) {
         PaletteCollection.get(context).add(preset.id)
-        if (preset.tier != Tier.UNIQUE) sparkleUntil = SystemClock.elapsedRealtime() + SPARKLE_MS
+        // The harder a palette is to come across, the more it sparkles and the longer it does.
+        when (preset.tier) {
+            Tier.RARE -> {
+                sparkLimit = 30
+                sparkRate = 0.12f
+                sparkleUntil = SystemClock.elapsedRealtime() + 2200L
+            }
+            Tier.LEGENDARY -> {
+                sparkLimit = 70
+                sparkRate = 0.3f
+                sparkleUntil = SystemClock.elapsedRealtime() + 3200L
+            }
+            Tier.UNIQUE -> {
+                sparkLimit = MAX_SPARKS
+                sparkRate = 0.5f
+                sparkleUntil = SystemClock.elapsedRealtime() + 4500L
+            }
+        }
         onPresetShown?.invoke(preset)
     }
 
-    /** Throw a few sparks off the peak caps while a rare palette is fresh. */
+    /** Throw sparks off the peak caps while a hand-picked palette is fresh. */
     private fun drawSparks(canvas: Canvas, h: Float, slot: Float, count: Int) {
         val sparkling = SystemClock.elapsedRealtime() < sparkleUntil
         val size = max(1.5f, 1.5f * density)
         for (i in 0 until MAX_SPARKS) {
             if (sparkLife[i] <= 0f) {
-                if (!sparkling || random.nextFloat() > 0.3f) continue
+                if (!sparkling || i >= sparkLimit || random.nextFloat() > sparkRate) continue
                 val bar = random.nextInt(count)
                 sparkX[i] = bar * slot + slot / 2
                 sparkY[i] = h - peakLevels[bar] * h
@@ -506,8 +525,7 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
         const val UNIQUE_CHANCE = 0.002f
 
         const val ANNOUNCE_MS = 2000L
-        const val SPARKLE_MS = 2200L
-        const val MAX_SPARKS = 80
+        const val MAX_SPARKS = 120
 
         private fun hsl(hue: Float, saturation: Float, lightness: Float) =
             ColorUtils.HSLToColor(floatArrayOf(((hue % 360f) + 360f) % 360f, saturation, lightness))
