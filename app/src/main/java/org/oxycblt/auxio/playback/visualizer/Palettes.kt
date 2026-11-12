@@ -19,6 +19,7 @@
 package org.oxycblt.auxio.playback.visualizer
 
 import android.content.Context
+import android.graphics.drawable.GradientDrawable
 import androidx.core.graphics.ColorUtils
 import androidx.preference.PreferenceManager
 
@@ -48,6 +49,22 @@ class Preset(
     val banded: Boolean,
     val colors: IntArray,
 )
+
+/** A round swatch of this palette's colours, [sizePx] across (or unsized with 0). */
+fun Preset.swatch(sizePx: Int = 0) =
+    GradientDrawable(
+            GradientDrawable.Orientation.BOTTOM_TOP,
+            when {
+                // Doubled up, stripes stay mostly crisp.
+                banded -> colors.flatMap { listOf(it, it) }.toIntArray()
+                colors.size == 1 -> intArrayOf(colors[0], colors[0])
+                else -> colors
+            },
+        )
+        .apply {
+            shape = GradientDrawable.OVAL
+            if (sizePx > 0) setSize(sizePx, sizePx)
+        }
 
 /** Every palette that is not random. */
 object Presets {

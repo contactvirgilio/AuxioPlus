@@ -21,6 +21,8 @@ package org.oxycblt.auxio.playback
 import android.annotation.SuppressLint
 import android.content.ActivityNotFoundException
 import android.content.Intent
+import android.content.SharedPreferences
+import android.content.res.ColorStateList
 import android.media.audiofx.AudioEffect
 import android.os.Build
 import android.os.Bundle
@@ -30,10 +32,12 @@ import android.view.View
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.widget.Toolbar
+import androidx.appcompat.widget.TooltipCompat
 import androidx.core.view.updatePadding
 import androidx.dynamicanimation.animation.SpringForce
 import androidx.fragment.app.activityViewModels
 import androidx.fragment.app.viewModels
+import androidx.preference.PreferenceManager
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 import org.oxycblt.auxio.music.FavoritesRepository
@@ -45,6 +49,14 @@ import org.oxycblt.auxio.list.ListViewModel
 import org.oxycblt.auxio.music.resolve
 import org.oxycblt.auxio.music.resolveNames
 import org.oxycblt.auxio.playback.queue.QueueViewModel
+import org.oxycblt.auxio.playback.stats.PlayCountRepository
+import org.oxycblt.auxio.playback.stats.Trophies
+import org.oxycblt.auxio.playback.visualizer.PaletteDialogs
+import org.oxycblt.auxio.playback.visualizer.Preset
+import org.oxycblt.auxio.playback.visualizer.VisualizerActivity
+import org.oxycblt.auxio.playback.visualizer.VisualizerView
+import org.oxycblt.auxio.playback.visualizer.swatch
+import org.oxycblt.auxio.ui.UISettings
 import org.oxycblt.auxio.playback.state.RepeatMode
 import org.oxycblt.auxio.playback.ui.StyledSeekBar
 import org.oxycblt.auxio.playback.ui.swiper.CarouselTransformer
@@ -74,8 +86,19 @@ class PlaybackPanelFragment :
     ViewBindingFragment<FragmentPlaybackPanelBinding>(),
     Toolbar.OnMenuItemClickListener,
     StyledSeekBar.Listener,
-    FavoritesRepository.Listener {
+    FavoritesRepository.Listener,
+    PlayCountRepository.Listener {
     @Inject lateinit var favoritesRepository: FavoritesRepository
+    @Inject lateinit var playCountRepository: PlayCountRepository
+    @Inject lateinit var uiSettings: UISettings
+    private val paletteListener: (Preset?) -> Unit = { if (binding != null) updatePalette() }
+    // UISettings only holds one listener, which the visualizer needs, so watch the setting itself.
+    private val visualizerToggled =
+        SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+            if (key == getString(R.string.set_key_show_visualizer) && binding != null) {
+                updatePalette()
+            }
+        }
     private val coverPagerAdapter = CoverPagerAdapter()
     private val playbackModel: PlaybackViewModel by activityViewModels()
     private val detailModel: DetailViewModel by activityViewModels()
@@ -166,6 +189,15 @@ class PlaybackPanelFragment :
         }
 
         favoritesRepository.addListener(this)
+        playCountRepository.addListener(this)
+        PreferenceManager.getDefaultSharedPreferences(requireContext())
+            .registerOnSharedPreferenceChangeListener(visualizerToggled)
+        VisualizerView.showingListeners.add(paletteListener)
+        binding.playbackTrophy?.setOnClickListener {
+            // The tooltip holds the details, show it on a plain tap too.
+            it.performLongClick()
+        }
+        updatePalette()
 
         // --- VIEWMODEL SETUP --
         collectImmediately(playbackModel.song, ::updateSong)
@@ -214,6 +246,10 @@ class PlaybackPanelFragment :
 
     override fun onDestroyBinding(binding: FragmentPlaybackPanelBinding) {
         favoritesRepository.removeListener(this)
+        playCountRepository.removeListener(this)
+        PreferenceManager.getDefaultSharedPreferences(requireContext())
+            .unregisterOnSharedPreferenceChangeListener(visualizerToggled)
+        VisualizerView.showingListeners.remove(paletteListener)
         binding.playbackRepeat.clearPendingIcon()
         binding.playbackSong.isSelected = false
         binding.playbackArtist.isSelected = false
@@ -224,11 +260,21 @@ class PlaybackPanelFragment :
     }
 
     override fun onMenuItemClick(item: MenuItem): Boolean {
-        if (item.itemId == R.id.action_favorite) {
-            playbackModel.song.value?.let {
-                favoritesRepository.toggle(it.uid)
+        when (item.itemId) {
+            R.id.action_favorite -> {
+                playbackModel.song.value?.let { favoritesRepository.toggle(it.uid) }
+                return true
             }
-            return true
+            R.id.action_fullscreen -> {
+                startActivity(Intent(requireContext(), VisualizerActivity::class.java))
+                return true
+            }
+            R.id.action_palette -> {
+                VisualizerView.showing?.let {
+                    PaletteDialogs.showPreview(requireContext(), it, offerCollection = true)
+                }
+                return true
+            }
         }
 
         return false
@@ -240,6 +286,44 @@ class PlaybackPanelFragment :
 
     override fun onFavoritesChanged() {
         if (binding != null) updateHeart()
+    }
+
+    override fun onPlayCountsChanged() {
+        if (binding != null) updateTrophy(playbackModel.song.value)
+    }
+
+    /**
+     * A circle in the toolbar shows the colours of the hand-picked palette that is on screen. With
+     * a random palette, or with the cover showing instead of the visualizer, there is none.
+     */
+    private fun updatePalette() {
+        val toolbar = requireBinding().playbackToolbar
+        val preset = if (uiSettings.showVisualizer) VisualizerView.showing else null
+        toolbar.setMenuItemVisible(R.id.action_palette, preset != null)
+        if (preset != null) {
+            val size = (22 * resources.displayMetrics.density).toInt()
+            toolbar.setMenuItemDrawable(R.id.action_palette, preset.swatch(size), preset.name)
+        }
+        // Showing or hiding an action draws the buttons again, so the heart needs its state back.
+        updateHeart()
+    }
+
+    /** A medal next to the title and a tinted seek bar for songs that have earned a trophy. */
+    private fun updateTrophy(song: Song?) {
+        val binding = requireBinding()
+        val trophy = song?.let { Trophies.of(it) }
+        binding.playbackSeekBar?.setAccentColor(trophy?.tier?.color)
+        val button = binding.playbackTrophy ?: return
+        if (trophy == null) {
+            button.visibility = View.GONE
+            return
+        }
+        val text = trophy.describe(requireContext())
+        button.setIconResource(trophy.tier.icon)
+        button.iconTint = ColorStateList.valueOf(trophy.tier.color)
+        button.contentDescription = text
+        TooltipCompat.setTooltipText(button, text)
+        button.visibility = View.VISIBLE
     }
 
     /** Show the heart filled when the playing song is a favorite. */
@@ -257,6 +341,7 @@ class PlaybackPanelFragment :
 
     private fun updateSong(song: Song?) {
         updateHeart()
+        updateTrophy(song)
         if (song == null) {
             // Nothing to do.
             return

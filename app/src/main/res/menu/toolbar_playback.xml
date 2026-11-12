@@ -2,6 +2,17 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
     <item
+        android:id="@+id/action_palette"
+        android:icon="@drawable/ic_accent_dynamic_24"
+        android:title="@string/lbl_current_palette"
+        android:visible="false"
+        app:showAsAction="always" />
+    <item
+        android:id="@+id/action_fullscreen"
+        android:icon="@drawable/ic_fullscreen_24"
+        android:title="@string/lbl_fullscreen_visualizer"
+        app:showAsAction="always" />
+    <item
         android:id="@+id/action_favorite"
         android:icon="@drawable/ic_heart_24"
         android:title="@string/lbl_favorite_add"

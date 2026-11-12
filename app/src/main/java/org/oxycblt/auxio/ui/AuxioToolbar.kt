@@ -233,6 +233,22 @@ constructor(
         }
     }
 
+    /** Like [setMenuItemIcon], but with a drawable that always keeps its own colours. */
+    fun setMenuItemDrawable(
+        itemId: Int,
+        drawable: android.graphics.drawable.Drawable,
+        title: CharSequence? = null,
+    ) {
+        val button = getMenuButton(itemId) ?: return
+        defaultIconTints.getOrPut(itemId) { button.iconTint }
+        button.icon = drawable
+        button.iconTint = null
+        if (title != null) {
+            button.contentDescription = title
+            TooltipCompat.setTooltipText(button, title)
+        }
+    }
+
     /**
      * Show or hide an action. The buttons are drawn by this toolbar, so changing the visibility of
      * the [MenuItem] alone does not update them.

@@ -420,6 +420,10 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
         }
         // A preset counts as seen once it's more than half faded in.
         val showing = if (t >= 0.5f) nextPreset else currentPreset
+        if (showing !== Companion.showing) {
+            Companion.showing = showing
+            showingListeners.forEach { it(showing) }
+        }
         if (showing !== announced) {
             announced = showing
             if (showing != null) announce(showing)
@@ -504,6 +508,13 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
         lateinit var nextPalette: IntArray
         var currentPreset: Preset? = null
         private var pendingPreset: Preset? = null
+
+        /** The hand-picked palette on screen right now, or null while it is a random one. */
+        var showing: Preset? = null
+            private set
+
+        /** Told on the main thread whenever [showing] changes. */
+        val showingListeners = java.util.concurrent.CopyOnWriteArrayList<(Preset?) -> Unit>()
 
         /**
          * Switch every visualizer to [preset] right away. It stays for one colour interval (or

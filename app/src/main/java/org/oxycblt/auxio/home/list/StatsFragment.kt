@@ -46,6 +46,7 @@ import org.oxycblt.auxio.music.MusicRepository
 import org.oxycblt.auxio.music.resolve
 import org.oxycblt.auxio.music.resolveNames
 import org.oxycblt.auxio.playback.stats.PlayCountRepository
+import org.oxycblt.auxio.playback.stats.showTrophy
 import org.oxycblt.auxio.ui.ViewBindingFragment
 import org.oxycblt.auxio.util.getAttrColorCompat
 import org.oxycblt.auxio.util.getPlural
@@ -401,6 +402,7 @@ class StatsFragment :
             val row = ItemTopSongBinding.inflate(inflater, binding.statsTracks, false)
             row.topCover.bind(song)
             row.topName.text = song.name.resolve(context)
+            row.topName.showTrophy(song)
             row.topInfo.text = info(song, plays)
             row.topRank.text = (i + 1).toString()
             row.topRank.setTextColor(

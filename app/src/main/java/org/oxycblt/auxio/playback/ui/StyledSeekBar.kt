@@ -51,6 +51,29 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
         binding.seekBarSlider.setWaveEnabled(enabled)
     }
 
+    private var defaultTrackTint: android.content.res.ColorStateList? = null
+    private var defaultThumbTint: android.content.res.ColorStateList? = null
+    private var tinted = false
+
+    /** Colour the played part and the thumb with [color], or go back to normal with null. */
+    fun setAccentColor(color: Int?) {
+        val slider = binding.seekBarSlider
+        if (!tinted) {
+            defaultTrackTint = slider.trackActiveTintList
+            defaultThumbTint = slider.thumbTintList
+        }
+        if (color != null) {
+            tinted = true
+            val tint = android.content.res.ColorStateList.valueOf(color)
+            slider.trackActiveTintList = tint
+            slider.thumbTintList = tint
+        } else if (tinted) {
+            tinted = false
+            defaultTrackTint?.let { slider.trackActiveTintList = it }
+            defaultThumbTint?.let { slider.thumbTintList = it }
+        }
+    }
+
     /** The current [Listener] attached to this instance. */
     var listener: Listener? = null
 

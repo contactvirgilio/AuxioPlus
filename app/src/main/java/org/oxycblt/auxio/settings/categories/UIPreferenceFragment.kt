@@ -28,7 +28,7 @@ import android.widget.ScrollView
 import android.widget.TextView
 import androidx.navigation.fragment.findNavController
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
-import org.oxycblt.auxio.playback.visualizer.PalettePreviewView
+import org.oxycblt.auxio.playback.visualizer.PaletteDialogs
 import org.oxycblt.auxio.playback.visualizer.PaletteCollection
 import org.oxycblt.auxio.playback.visualizer.Preset
 import org.oxycblt.auxio.playback.visualizer.Presets
@@ -83,132 +83,6 @@ class UIPreferenceFragment : BasePreferenceFragment(R.xml.preferences_ui) {
             )
     }
 
-    /** A dialog with a circle for every hand-picked palette, filled in once it's been seen. */
-    private fun showCollection(preference: Preference) {
-        val context = requireContext()
-        val seen = PaletteCollection.get(context).seen()
-        val density = resources.displayMetrics.density
-        fun dp(v: Int) = (v * density).toInt()
-
-        val root =
-            LinearLayout(context).apply {
-                orientation = LinearLayout.VERTICAL
-                setPadding(dp(24), dp(8), dp(24), 0)
-            }
-        val hint =
-            TextView(context).apply {
-                setText(R.string.lbl_palette_hint)
-                setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_BodyMedium)
-                setPadding(0, dp(8), 0, 0)
-            }
-        fun section(label: Int, presets: List<Preset>) {
-            root.addView(
-                TextView(context).apply {
-                    text =
-                        getString(
-                            R.string.fmt_palette_count,
-                            getString(label),
-                            presets.count { it.id in seen },
-                            presets.size,
-                        )
-                    setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_LabelLarge)
-                    setPadding(0, dp(12), 0, dp(8))
-                }
-            )
-            val grid = GridLayout(context).apply { columnCount = COLLECTION_COLUMNS }
-            for (preset in presets) {
-                val found = preset.id in seen
-                val dot =
-                    View(context).apply {
-                        background =
-                            if (found) {
-                                GradientDrawable(
-                                        GradientDrawable.Orientation.BOTTOM_TOP,
-                                        when {
-                                            // Doubled up, stripes stay mostly crisp.
-                                            preset.banded ->
-                                                preset.colors.flatMap { listOf(it, it) }.toIntArray()
-                                            preset.colors.size == 1 ->
-                                                intArrayOf(preset.colors[0], preset.colors[0])
-                                            else -> preset.colors
-                                        },
-                                    )
-                                    .apply { shape = GradientDrawable.OVAL }
-                            } else {
-                                GradientDrawable().apply {
-                                    shape = GradientDrawable.OVAL
-                                    setColor(Color.TRANSPARENT)
-                                    setStroke(dp(1), context.getAttrColorCompat(
-                                        com.google.android.material.R.attr.colorOutlineVariant).defaultColor)
-                                }
-                            }
-                        contentDescription = if (found) preset.name else null
-                        setOnClickListener {
-                            if (found) {
-                                hint.setText(R.string.lbl_palette_hint)
-                                showPreview(preset)
-                            } else {
-                                hint.setText(R.string.lbl_palette_unknown)
-                            }
-                        }
-                    }
-                grid.addView(
-                    dot,
-                    GridLayout.LayoutParams().apply {
-                        width = dp(40)
-                        height = dp(40)
-                        setMargins(dp(4), dp(4), dp(4), dp(4))
-                    },
-                )
-            }
-            root.addView(grid)
-        }
-        // The name of a tapped palette goes at the top, where it stays in view.
-        root.addView(hint)
-        section(R.string.lbl_palettes_rare, Presets.RARE)
-        section(R.string.lbl_palettes_legendary, Presets.LEGENDARY)
-        section(R.string.lbl_palettes_unique, Presets.UNIQUE)
-
-        MaterialAlertDialogBuilder(context)
-            .setTitle(R.string.set_palette_collection)
-            .setView(ScrollView(context).apply { addView(root) })
-            .setPositiveButton(android.R.string.ok, null)
-            .show()
-    }
-
-    /** A moving preview of a palette that has been found, with a way to use it right now. */
-    private fun showPreview(preset: Preset) {
-        val context = requireContext()
-        val density = resources.displayMetrics.density
-        val preview = PalettePreviewView(context).apply { show(preset) }
-        val frame =
-            FrameLayout(context).apply {
-                setPadding((24 * density).toInt(), (12 * density).toInt(), (24 * density).toInt(), 0)
-                addView(
-                    preview,
-                    FrameLayout.LayoutParams(
-                        FrameLayout.LayoutParams.MATCH_PARENT,
-                        (170 * density).toInt(),
-                    ),
-                )
-            }
-        MaterialAlertDialogBuilder(context)
-            .setTitle(preset.name)
-            .setMessage(
-                when (preset.tier) {
-                    Tier.RARE -> R.string.lbl_palettes_rare
-                    Tier.LEGENDARY -> R.string.lbl_palettes_legendary
-                    Tier.UNIQUE -> R.string.lbl_palettes_unique
-                }
-            )
-            .setView(frame)
-            .setPositiveButton(R.string.lbl_apply_now) { _, _ ->
-                VisualizerView.applyPreset(preset)
-            }
-            .setNegativeButton(R.string.lbl_cancel, null)
-            .show()
-    }
-
     override fun onSetupPreference(preference: Preference) {
         when (preference.key) {
             getString(R.string.set_key_theme) -> {
@@ -223,7 +97,7 @@ class UIPreferenceFragment : BasePreferenceFragment(R.xml.preferences_ui) {
             getString(R.string.set_key_palette_collection) -> {
                 updateCollectionSummary(preference)
                 preference.setOnPreferenceClickListener {
-                    showCollection(preference)
+                    PaletteDialogs.showCollection(requireContext())
                     true
                 }
             }

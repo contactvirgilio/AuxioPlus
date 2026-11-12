@@ -33,7 +33,8 @@
 - 100 hand-picked easter egg palettes in three tiers (rare, legendary and unique), each shown by name when it appears
 - They sparkle when they appear, more so the rarer the tier
 - A collection in Settings that tracks the palettes you've discovered
-- A progress fill in the pill at the bottom, tap to turn it on or off
+- A progress fill in the pill at the bottom, drag along it to seek
+- Preview and apply the palettes you have found
 
 **Library**
 - Pinch to zoom Albums and Artists between list, small tiles and big tiles
@@ -45,6 +46,7 @@
 - Listening time, plays and a chart for the week, month, year or all time
 - Weeks start on Monday
 - Top tracks (5, 25 or 50), top artists and top albums for each period
+- Trophies (bronze, silver, gold, diamond) for your most played songs, shown wherever they play
 
 **Backup**
 - Pick one backup folder, used directly

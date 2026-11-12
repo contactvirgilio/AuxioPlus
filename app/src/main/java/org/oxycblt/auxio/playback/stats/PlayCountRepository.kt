@@ -155,6 +155,7 @@ class PlayCountRepository @Inject constructor(@ApplicationContext context: Conte
     }
 
     private fun notifyListeners() {
+        Trophies.update(counts)
         mainHandler.post { listeners.forEach { it.onPlayCountsChanged() } }
     }
 

@@ -33,6 +33,11 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.Lifecycle
+import android.graphics.Color
+import android.graphics.drawable.ClipDrawable
+import android.graphics.drawable.GradientDrawable
+import android.graphics.drawable.LayerDrawable
+import android.view.Gravity
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import dagger.hilt.android.AndroidEntryPoint
@@ -46,6 +51,9 @@ import org.oxycblt.auxio.music.FavoritesRepository
 import org.oxycblt.auxio.music.resolve
 import org.oxycblt.auxio.playback.PlaybackViewModel
 import org.oxycblt.auxio.playback.formatDurationMs
+import org.oxycblt.auxio.playback.msToDs
+import org.oxycblt.auxio.playback.stats.PlayCountRepository
+import org.oxycblt.auxio.playback.stats.Trophies
 import org.oxycblt.musikr.Song
 
 /**
@@ -71,7 +79,30 @@ class VisualizerActivity : AppCompatActivity() {
     private val preferences by lazy {
         androidx.preference.PreferenceManager.getDefaultSharedPreferences(this)
     }
-    private var showProgress = true
+    @Inject lateinit var playCountRepository: PlayCountRepository
+    private val countsListener =
+        object : PlayCountRepository.Listener {
+            override fun onPlayCountsChanged() {
+                showSong(playbackModel.song.value)
+                updateProgress(playbackModel.positionDs.value)
+            }
+        }
+    // The pill: what it says, and dragging along it to seek.
+    private var songText: CharSequence = ""
+    private var trophyText: CharSequence? = null
+    private var trophyColor = Color.WHITE
+    private var showingTrophy = false
+    private var seeking = false
+    private var seekDownX = 0f
+    private var seekFraction = 0f
+    private val flipPill =
+        object : Runnable {
+            override fun run() {
+                showingTrophy = !showingTrophy
+                renderPill()
+                binding.visualizerPill.postDelayed(this, FLIP_MS)
+            }
+        }
     private val hideLevel = Runnable { binding.visualizerLevel.animate().alpha(0f).start() }
     private val hidePalette = Runnable { binding.visualizerPalette.animate().alpha(0f).setDuration(500).start() }
 
@@ -108,16 +139,46 @@ class VisualizerActivity : AppCompatActivity() {
             )
         }
 
-        showProgress = preferences.getBoolean(KEY_PILL_PROGRESS, true)
         binding.visualizerPill.maxWidth = (resources.displayMetrics.widthPixels * 0.9f).toInt()
         binding.visualizerPill.isVisibleOrGone(false)
 
-        // Tapping the pill turns the progress fill on or off.
-        binding.visualizerPill.setOnClickListener {
-            showProgress = !showProgress
-            preferences.edit().putBoolean(KEY_PILL_PROGRESS, showProgress).apply()
-            updateProgress(playbackModel.positionDs.value)
+        // A tap on the pill does nothing. Dragging along it seeks: the time shows while the
+        // finger is down and the song only jumps once it is lifted.
+        val slop = ViewConfiguration.get(this).scaledTouchSlop
+        binding.visualizerPill.setOnTouchListener { view, event ->
+            val duration = playbackModel.song.value?.durationMs ?: 0L
+            when (event.actionMasked) {
+                MotionEvent.ACTION_DOWN -> {
+                    seekDownX = event.x
+                    seeking = false
+                }
+                MotionEvent.ACTION_MOVE -> {
+                    if (!seeking && duration > 0L && abs(event.x - seekDownX) > slop) {
+                        seeking = true
+                        view.parent?.requestDisallowInterceptTouchEvent(true)
+                    }
+                    if (seeking) {
+                        seekFraction = (event.x / view.width).coerceIn(0f, 1f)
+                        pillFill()?.level = (seekFraction * 10_000).toInt()
+                        renderPill()
+                    }
+                }
+                MotionEvent.ACTION_UP -> {
+                    if (seeking) {
+                        seeking = false
+                        playbackModel.seekTo((seekFraction * duration).toLong().msToDs())
+                        renderPill()
+                    }
+                }
+                MotionEvent.ACTION_CANCEL -> {
+                    seeking = false
+                    renderPill()
+                    updateProgress(playbackModel.positionDs.value)
+                }
+            }
+            true
         }
+        playCountRepository.addListener(countsListener)
 
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
@@ -132,27 +193,106 @@ class VisualizerActivity : AppCompatActivity() {
         }
     }
 
-    /** Fill the pill up to how far into the song it is, if that is turned on. */
+    override fun onDestroy() {
+        super.onDestroy()
+        playCountRepository.removeListener(countsListener)
+        binding.visualizerPill.removeCallbacks(flipPill)
+    }
+
+    private fun pillFill() =
+        (binding.visualizerPill.background as? LayerDrawable)?.findDrawableByLayerId(
+            R.id.pill_progress
+        )
+
+    /** Fill the pill up to how far into the song it is. */
     private fun updateProgress(positionDs: Long) {
-        val fill =
-            (binding.visualizerPill.background as? android.graphics.drawable.LayerDrawable)
-                ?.findDrawableByLayerId(R.id.pill_progress) ?: return
+        // While the finger is on the pill, it shows where the song would jump to.
+        if (seeking) return
+        val fill = pillFill() ?: return
         val duration = playbackModel.song.value?.durationMs ?: 0L
         fill.level =
-            if (!showProgress || duration <= 0L) 0
+            if (duration <= 0L) 0
             else (positionDs * 1000_000L / duration).toInt().coerceIn(0, 10_000)
+    }
+
+    /** The pill of a song with a trophy: its colours around the edge and in the fill. */
+    private fun trophyBackground(border: Int, fill: Int): LayerDrawable {
+        val density = resources.displayMetrics.density
+        fun shape() = GradientDrawable().apply { cornerRadius = 999f * density }
+        val base = shape().apply { setColor(Color.BLACK) }
+        val progress =
+            ClipDrawable(shape().apply { setColor(fill) }, Gravity.LEFT, ClipDrawable.HORIZONTAL)
+        val edge =
+            shape().apply {
+                setColor(Color.TRANSPARENT)
+                setStroke((1.5f * density).toInt().coerceAtLeast(1), border)
+            }
+        return LayerDrawable(arrayOf(base, progress, edge)).apply { setId(1, R.id.pill_progress) }
+    }
+
+    /** Put the right words in the pill: the seek time, the trophy or the song. */
+    private fun renderPill() {
+        val pill = binding.visualizerPill
+        val duration = playbackModel.song.value?.durationMs ?: 0L
+        val trophy = trophyText
+        when {
+            seeking -> {
+                pill.setTextColor(Color.WHITE)
+                pill.text =
+                    getString(
+                        R.string.fmt_seek_position,
+                        (seekFraction * duration).toLong().formatDurationMs(true),
+                        duration.formatDurationMs(false),
+                    )
+            }
+            showingTrophy && trophy != null -> {
+                pill.setTextColor(trophyColor)
+                pill.text = trophy
+            }
+            else -> {
+                pill.setTextColor(Color.WHITE)
+                pill.text = songText
+            }
+        }
     }
 
     private fun showSong(song: Song?) {
         val pill = binding.visualizerPill
+        pill.removeCallbacks(flipPill)
+        showingTrophy = false
         if (song == null) {
             pill.isVisibleOrGone(false)
             return
         }
         val artist = song.artists.firstOrNull()?.name?.resolve(this)
-        pill.text =
+        songText =
             listOfNotNull(artist, song.name.resolve(this), song.durationMs.formatDurationMs(false))
                 .joinToString(" – ")
+        val trophy = Trophies.of(song)
+        val horizontalPadding = pill.paddingLeft + pill.paddingRight
+        if (trophy != null) {
+            trophyText = trophy.describeShort(this)
+            trophyColor = trophy.tier.bright
+            pill.background = trophyBackground(trophy.tier.bright, trophy.tier.fill)
+            // The words swap between the song and its trophy every few seconds.
+            pill.postDelayed(flipPill, FLIP_MS)
+        } else {
+            trophyText = null
+            pill.setBackgroundResource(R.drawable.bg_visualizer_pill_progress)
+        }
+        // One width for everything the pill says, so it does not jump about.
+        val widest =
+            maxOf(
+                pill.paint.measureText(songText.toString()),
+                trophyText?.let { pill.paint.measureText(it.toString()) } ?: 0f,
+            )
+        val max = (resources.displayMetrics.widthPixels * 0.9f).toInt()
+        pill.layoutParams =
+            pill.layoutParams.apply {
+                width = (widest + horizontalPadding + 2).toInt().coerceAtMost(max)
+            }
+        pill.gravity = Gravity.CENTER
+        renderPill()
         pill.isVisibleOrGone(true)
     }
 
@@ -228,8 +368,21 @@ class VisualizerActivity : AppCompatActivity() {
         return y >= h * BAND_TOP && y <= h * BAND_BOTTOM
     }
 
+    /** Touches on the pill belong to the pill, wherever it ends up on the screen. */
+    private fun onPill(event: MotionEvent): Boolean {
+        val pill = binding.visualizerPill
+        return pill.visibility == android.view.View.VISIBLE &&
+            pill.getGlobalVisibleRect(pillRect) &&
+            pillRect.contains(event.rawX.toInt(), event.rawY.toInt())
+    }
+
+    private val pillRect = android.graphics.Rect()
+
     override fun dispatchTouchEvent(event: MotionEvent): Boolean {
-        if (event.actionMasked == MotionEvent.ACTION_DOWN && !inActiveBand(event.y)) {
+        if (
+            event.actionMasked == MotionEvent.ACTION_DOWN &&
+                (!inActiveBand(event.y) || onPill(event))
+        ) {
             ignoring = true
         } else if (event.actionMasked == MotionEvent.ACTION_DOWN) {
             ignoring = false
@@ -316,7 +469,6 @@ class VisualizerActivity : AppCompatActivity() {
         const val BAND_TOP = 0.25f
         const val BAND_BOTTOM = 0.82f
         const val LEVEL_MS = 900L
+        const val FLIP_MS = 2600L
     }
 }
-
-private const val KEY_PILL_PROGRESS = "auxio_visualizer_pill_progress"

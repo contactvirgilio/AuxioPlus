@@ -34,6 +34,7 @@ import org.oxycblt.auxio.list.adapter.SelectionIndicatorAdapter
 import org.oxycblt.auxio.list.adapter.SimpleDiffCallback
 import org.oxycblt.auxio.music.areNamesTheSame
 import org.oxycblt.auxio.music.resolve
+import org.oxycblt.auxio.playback.stats.showTrophy
 import org.oxycblt.auxio.music.resolveNames
 import org.oxycblt.auxio.util.context
 import org.oxycblt.auxio.util.getPlural
@@ -61,6 +62,7 @@ class SongViewHolder private constructor(private val binding: ItemSongBinding) :
         listener.bind(song, this, menuButton = binding.songMenu)
         binding.songAlbumCover.bind(song)
         binding.songName.text = song.name.resolve(binding.context)
+        binding.songName.showTrophy(song)
         binding.songInfo.text = song.artists.resolveNames(binding.context)
     }
 

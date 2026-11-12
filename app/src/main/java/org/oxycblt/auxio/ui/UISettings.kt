@@ -96,11 +96,9 @@ class UISettingsImpl @Inject constructor(@ApplicationContext context: Context) :
             }
         }
 
+    // There is only the colour cycle now; the choice between it and the plain spectrum is gone.
     override val visualizerMode: VisualizerMode
-        get() =
-            VisualizerMode.fromIntCode(
-                sharedPreferences.getInt(getString(R.string.set_key_visualizer_mode), Int.MIN_VALUE)
-            ) ?: VisualizerMode.SPECTRUM
+        get() = VisualizerMode.SPECTRUM_CYCLE
 
     override val visualizerIntervalSeconds: Int
         get() =

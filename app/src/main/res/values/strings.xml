@@ -254,6 +254,17 @@
     <string name="lbl_palettes_legendary">Legendary</string>
     <string name="lbl_palettes_unique">Unique</string>
     <string name="fmt_palette_count">%1$s · %2$d of %3$d</string>
+    <string name="lbl_trophy_bronze">Bronze</string>
+    <string name="lbl_trophy_silver">Silver</string>
+    <string name="lbl_trophy_gold">Gold</string>
+    <string name="lbl_trophy_diamond">Diamond</string>
+    <string name="fmt_trophy">%1$s · %2$s · #%3$d all time</string>
+    <string name="fmt_trophy_short">%1$s · #%2$d all time</string>
+    <string name="fmt_seek_position">%1$s / %2$s</string>
+    <string name="lbl_fullscreen_visualizer">Fullscreen visualizer</string>
+    <string name="lbl_current_palette">Current palette</string>
+    <string name="lbl_palette_collection_short">Collection</string>
+    <string name="set_visualizer_header">Visualizer</string>
     <string name="lbl_apply_now">Apply now</string>
     <string name="lbl_palette_hint">Tap a palette</string>
     <string name="lbl_palette_unknown">Not found yet</string>

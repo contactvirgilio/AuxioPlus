@@ -22,7 +22,10 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import androidx.fragment.app.activityViewModels
 import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
 import org.oxycblt.auxio.R
+import org.oxycblt.auxio.playback.stats.PlayCountRepository
+import org.oxycblt.auxio.playback.stats.Trophies
 import org.oxycblt.auxio.databinding.FragmentPlaybackBarBinding
 import org.oxycblt.auxio.detail.DetailViewModel
 import org.oxycblt.auxio.music.resolve
@@ -39,7 +42,26 @@ import timber.log.Timber as L
  * @author Alexander Capehart (OxygenCobalt)
  */
 @AndroidEntryPoint
-class PlaybackBarFragment : ViewBindingFragment<FragmentPlaybackBarBinding>() {
+class PlaybackBarFragment :
+    ViewBindingFragment<FragmentPlaybackBarBinding>(), PlayCountRepository.Listener {
+    @Inject lateinit var playCountRepository: PlayCountRepository
+    private var defaultProgressColor: IntArray? = null
+
+    override fun onPlayCountsChanged() {
+        if (binding != null) updateTrophy(playbackModel.song.value)
+    }
+
+    /** The progress line takes the colour of the song's trophy, if it has one. */
+    private fun updateTrophy(song: Song?) {
+        val bar = requireBinding().playbackProgressBar
+        val normal = defaultProgressColor ?: bar.indicatorColor.copyOf().also {
+            defaultProgressColor = it
+        }
+        val trophy = song?.let { Trophies.of(it) }
+        if (trophy != null) bar.setIndicatorColor(trophy.tier.color)
+        else bar.setIndicatorColor(*normal)
+    }
+
     private val playbackModel: PlaybackViewModel by activityViewModels()
     private val detailModel: DetailViewModel by activityViewModels()
 
@@ -70,6 +92,7 @@ class PlaybackBarFragment : ViewBindingFragment<FragmentPlaybackBarBinding>() {
         binding.playbackPlayPause.setOnClickListener { playbackModel.togglePlaying() }
 
         // -- VIEWMODEL SETUP ---
+        playCountRepository.addListener(this)
         collectImmediately(playbackModel.song, ::updateSong)
         collectImmediately(playbackModel.isPlaying, ::updatePlaying)
         collectImmediately(playbackModel.positionDs, ::updatePosition)
@@ -83,6 +106,7 @@ class PlaybackBarFragment : ViewBindingFragment<FragmentPlaybackBarBinding>() {
 
     override fun onDestroyBinding(binding: FragmentPlaybackBarBinding) {
         super.onDestroyBinding(binding)
+        playCountRepository.removeListener(this)
         binding.playbackSecondaryAction.clearPendingIcon()
         // Marquee elements leak if they are not disabled when the views are destroyed.
         binding.playbackSong.isSelected = false
@@ -101,6 +125,7 @@ class PlaybackBarFragment : ViewBindingFragment<FragmentPlaybackBarBinding>() {
         binding.playbackSong.text = song.name.resolve(context)
         binding.playbackInfo.text = song.artists.resolveNames(context)
         binding.playbackProgressBar.max = song.durationMs.msToDs().toInt()
+        updateTrophy(song)
     }
 
     private fun updatePlaying(isPlaying: Boolean) {
