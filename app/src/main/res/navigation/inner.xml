@@ -28,6 +28,9 @@
             android:id="@+id/sort_playlists"
             app:destination="@+id/playlist_sort_dialog" />
         <action
+            android:id="@+id/sort_favorites"
+            app:destination="@+id/favorites_sort_dialog" />
+        <action
             android:id="@+id/show_song"
             app:destination="@id/song_detail_dialog" />
         <action
@@ -130,6 +133,12 @@
         android:id="@+id/playlist_sort_dialog"
         android:name="org.oxycblt.auxio.home.sort.PlaylistSortDialog"
         android:label="playlist_sort_dialog"
+        tools:layout="@layout/dialog_sort" />
+
+    <dialog
+        android:id="@+id/favorites_sort_dialog"
+        android:name="org.oxycblt.auxio.home.sort.FavoritesSortDialog"
+        android:label="favorites_sort_dialog"
         tools:layout="@layout/dialog_sort" />
 
     <dialog

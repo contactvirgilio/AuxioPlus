@@ -121,7 +121,11 @@ constructor(
         get() = _playlistList
 
     private val _favoritesList = MutableStateFlow(listOf<Song>())
-    /** The favorite songs, newest first, to be shown in the Favorites tab. */
+    /** The [Sort] of the Favorites tab. */
+    val favoritesSort: Sort
+        get() = listSettings.favoritesSort
+
+    /** The favorite songs, in the preferred [Sort], to be shown in the Favorites tab. */
     val favoritesList: StateFlow<List<Song>>
         get() = _favoritesList
 
@@ -243,6 +247,15 @@ constructor(
      */
     fun applyAlbumSort(sort: Sort) {
         listSettings.albumSort = sort
+    }
+
+    /**
+     * Apply a new [Sort] to [favoritesList].
+     *
+     * @param sort The [Sort] to apply.
+     */
+    fun applyFavoritesSort(sort: Sort) {
+        listSettings.favoritesSort = sort
     }
 
     /**

@@ -218,10 +218,10 @@ class HomeFragment : SelectionFragment<FragmentHomeBinding>() {
                         MusicType.ARTISTS -> HomeFragmentDirections.sortArtists()
                         MusicType.GENRES -> HomeFragmentDirections.sortGenres()
                         MusicType.PLAYLISTS -> HomeFragmentDirections.sortPlaylists()
-                        // The Top 50 is always ordered by plays.
+                        MusicType.FAVORITES -> HomeFragmentDirections.sortFavorites()
+                        // Activity has nothing to sort.
                         MusicType.TOP,
-                        MusicType.STATS,
-                        MusicType.FAVORITES -> null
+                        MusicType.STATS -> null
                     }
                 if (directions != null) {
                     findNavController().navigateSafe(directions)
@@ -280,11 +280,11 @@ class HomeFragment : SelectionFragment<FragmentHomeBinding>() {
                 MusicType.STATS -> R.id.home_stats_scroll
                 MusicType.FAVORITES -> R.id.home_favorites_recycler
             }
-        // The Top 50 is always ordered by plays, so there is nothing to sort.
-        binding.homeNormalToolbar.menu.findItem(R.id.action_sort)?.isVisible =
-            tabType != MusicType.TOP &&
-                tabType != MusicType.STATS &&
-                tabType != MusicType.FAVORITES
+        // Activity has nothing to sort.
+        binding.homeNormalToolbar.setMenuItemVisible(
+            R.id.action_sort,
+            tabType != MusicType.TOP && tabType != MusicType.STATS,
+        )
     }
 
     private fun handleRecreate(recreate: Unit?) {

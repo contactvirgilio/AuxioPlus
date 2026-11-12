@@ -233,6 +233,19 @@ constructor(
         }
     }
 
+    /**
+     * Show or hide an action. The buttons are drawn by this toolbar, so changing the visibility of
+     * the [MenuItem] alone does not update them.
+     */
+    @SuppressLint("RestrictedApi")
+    fun setMenuItemVisible(itemId: Int, visible: Boolean) {
+        val item = menuBuilder.findItem(itemId) ?: return
+        if (item.isVisible == visible) return
+        item.isVisible = visible
+        defaultIconTints.clear()
+        rebuildActionButtons()
+    }
+
     @SuppressLint("RestrictedApi")
     fun setMenuItemEnabled(itemId: Int, enabled: Boolean) {
         menuBuilder.findItem(itemId)?.isEnabled = enabled

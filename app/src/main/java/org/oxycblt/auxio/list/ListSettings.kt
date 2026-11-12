@@ -37,6 +37,8 @@ interface ListSettings : Settings<ListSettings.Listener> {
     var genreSort: Sort
     /** The [Sort] mode used in Playlist lists. */
     var playlistSort: Sort
+    /** The [Sort] mode used in the Favorites list. Date added means when it was favorited. */
+    var favoritesSort: Sort
     /** The [Sort] mode used in an Album's Song list. */
     var albumSongSort: Sort
     /** The [Sort] mode used in an Artist's Song list. */
@@ -60,6 +62,8 @@ interface ListSettings : Settings<ListSettings.Listener> {
         fun onGenreSongSortChanged() {}
 
         fun onPlaylistSortChanged() {}
+
+        fun onFavoritesSortChanged() {}
     }
 }
 
@@ -125,6 +129,18 @@ class ListSettingsImpl @Inject constructor(@ApplicationContext val context: Cont
             }
         }
 
+    override var favoritesSort: Sort
+        get() =
+            Sort.fromIntCode(
+                sharedPreferences.getInt(getString(R.string.set_key_favorites_sort), Int.MIN_VALUE)
+            ) ?: Sort(Sort.Mode.ByDateAdded, Sort.Direction.DESCENDING)
+        set(value) {
+            sharedPreferences.edit {
+                putInt(getString(R.string.set_key_favorites_sort), value.intCode)
+                apply()
+            }
+        }
+
     override var albumSongSort: Sort
         get() =
             Sort.fromIntCode(
@@ -180,6 +196,7 @@ class ListSettingsImpl @Inject constructor(@ApplicationContext val context: Cont
             getString(R.string.set_key_genres_sort) -> listener.onGenreSortChanged()
             getString(R.string.set_key_genre_songs_sort) -> listener.onGenreSongSortChanged()
             getString(R.string.set_key_playlists_sort) -> listener.onPlaylistSortChanged()
+            getString(R.string.set_key_favorites_sort) -> listener.onFavoritesSortChanged()
         }
     }
 }

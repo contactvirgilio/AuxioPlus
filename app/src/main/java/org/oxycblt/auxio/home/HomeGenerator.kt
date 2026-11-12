@@ -21,6 +21,7 @@ package org.oxycblt.auxio.home
 import javax.inject.Inject
 import org.oxycblt.auxio.home.tabs.Tab
 import org.oxycblt.auxio.list.ListSettings
+import org.oxycblt.auxio.list.sort.Sort
 import org.oxycblt.auxio.list.adapter.UpdateInstructions
 import org.oxycblt.auxio.music.FavoritesRepository
 import org.oxycblt.auxio.music.MusicRepository
@@ -125,6 +126,11 @@ private class HomeGeneratorImpl(
         invalidator.invalidateMusic(MusicType.SONGS, UpdateInstructions.Replace(0))
     }
 
+    override fun onFavoritesSortChanged() {
+        super.onFavoritesSortChanged()
+        invalidator.invalidateMusic(MusicType.FAVORITES, UpdateInstructions.Replace(0))
+    }
+
     override fun onAlbumSortChanged() {
         super.onAlbumSortChanged()
         invalidator.invalidateMusic(MusicType.ALBUMS, UpdateInstructions.Replace(0))
@@ -200,8 +206,17 @@ private class HomeGeneratorImpl(
 
     override fun favorites(): List<Song> {
         val library = musicRepository.library ?: return emptyList()
-        return favoritesRepository.uids().mapNotNull { uid ->
-            Music.UID.fromString(uid)?.let { library.findSong(it) }
+        // Newest favorite first.
+        val songs =
+            favoritesRepository.uids().mapNotNull { uid ->
+                Music.UID.fromString(uid)?.let { library.findSong(it) }
+            }
+        val sort = listSettings.favoritesSort
+        return when {
+            // Here "date added" is when the song was favorited, not when it joined the library.
+            sort.mode != Sort.Mode.ByDateAdded -> sort.songs(songs)
+            sort.direction == Sort.Direction.DESCENDING -> songs
+            else -> songs.asReversed()
         }
     }
 
