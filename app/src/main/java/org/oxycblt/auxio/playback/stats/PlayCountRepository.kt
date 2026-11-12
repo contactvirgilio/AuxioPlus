@@ -38,7 +38,7 @@ import org.oxycblt.musikr.Music
 import timber.log.Timber as L
 
 /**
- * Stores how many times each song has been played, for the Top 50 tab.
+ * Stores how many times each song has been played, for the Activity tab.
  *
  * Counts are kept in memory for quick reads and written through to a small database. Listeners are
  * always called on the main thread.
@@ -76,24 +76,6 @@ class PlayCountRepository @Inject constructor(@ApplicationContext context: Conte
     /** When play counting started, as unix time in milliseconds. */
     val sinceMs: Long
         get() = sharedPreferences.getLong(KEY_SINCE, System.currentTimeMillis())
-
-    /**
-     * The most played songs, most played first. Songs played equally often are ordered by which was
-     * played most recently.
-     *
-     * @param limit The most entries to return.
-     * @return Pairs of song UIDs and their [Entry].
-     */
-    fun top(limit: Int): List<Pair<Music.UID, Entry>> =
-        counts.entries
-            .sortedWith(
-                compareByDescending<Map.Entry<String, Entry>> { it.value.count }
-                    .thenByDescending { it.value.lastPlayedMs }
-            )
-            .asSequence()
-            .mapNotNull { (uid, entry) -> Music.UID.fromString(uid)?.let { it to entry } }
-            .take(limit)
-            .toList()
 
     /**
      * Count one more play of the song with the given [uid].

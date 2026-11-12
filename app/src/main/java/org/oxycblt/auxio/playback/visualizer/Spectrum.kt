@@ -42,8 +42,8 @@ class Spectrum(val size: Int) {
     private val sinTable = FloatArray(size / 2) { i -> sin(2 * PI * i / size).toFloat() }
     private val bitReversed = IntArray(size)
 
-    /** Loudness of each frequency bin from the last [analyze], in decibels (0 = full scale). */
-    val decibels = FloatArray(size / 2)
+    /** Squared magnitude of each frequency bin from the last [analyze]. */
+    private val power = FloatArray(size / 2)
 
     init {
         require(size >= 2 && size and (size - 1) == 0) { "Size must be a power of two" }
@@ -54,7 +54,7 @@ class Spectrum(val size: Int) {
     }
 
     /**
-     * Analyse [samples] (at least [size] long) and fill [decibels].
+     * Analyse [samples] (at least [size] long), ready for [peakDecibels].
      *
      * @param samples Mono samples in the range -1 to 1.
      */
@@ -84,28 +84,33 @@ class Spectrum(val size: Int) {
             }
             half *= 2
         }
-        // A full-scale sine wave peaks at size / 4 once windowed, so scale to that.
-        val scale = 4f / size
+        // Only the loudest bin of each bar is ever shown, so the square roots and logarithms
+        // are left until a peak is asked for.
         for (i in 0 until size / 2) {
-            val magnitude = sqrt(re[i] * re[i] + im[i] * im[i]) * scale
-            decibels[i] = 20f * log10(max(magnitude, MIN_MAGNITUDE))
+            power[i] = re[i] * re[i] + im[i] * im[i]
         }
     }
 
-    /**
-     * The loudest level in the frequency range [low] to [high] Hz, in decibels.
-     *
-     * @param sampleRate The sample rate of the analysed audio.
-     */
-    fun peakDecibels(low: Float, high: Float, sampleRate: Int): Float {
+    /** The frequency bin that [frequency] Hz falls into, for [peakDecibels]. */
+    fun binFor(frequency: Float, sampleRate: Int): Int {
         val binWidth = sampleRate.toFloat() / size
-        val first = (low / binWidth).toInt().coerceIn(1, size / 2 - 1)
-        val last = (high / binWidth).toInt().coerceIn(first, size / 2 - 1)
-        var peak = decibels[first]
+        return (frequency / binWidth).toInt().coerceIn(1, size / 2 - 1)
+    }
+
+    /**
+     * The loudest level in the bins [first] to [last], in decibels (0 = full scale).
+     *
+     * @param first The first bin, from [binFor].
+     * @param last The last bin, from [binFor]. Anything below [first] is treated as [first].
+     */
+    fun peakDecibels(first: Int, last: Int): Float {
+        var peak = power[first]
         for (i in first + 1..last) {
-            if (decibels[i] > peak) peak = decibels[i]
+            if (power[i] > peak) peak = power[i]
         }
-        return peak
+        // A full-scale sine wave peaks at size / 4 once windowed, so scale to that.
+        val magnitude = sqrt(peak) * (4f / size)
+        return 20f * log10(max(magnitude, MIN_MAGNITUDE))
     }
 
     companion object {

@@ -120,16 +120,6 @@ constructor(
     val playlistList: StateFlow<List<Playlist>>
         get() = _playlistList
 
-    private val _topList = MutableStateFlow(listOf<TopSong>())
-    /** The most played songs, most played first, to be shown in the Top 50 tab. */
-    val topList: StateFlow<List<TopSong>>
-        get() = _topList
-
-    private val _topInstructions = MutableEvent<UpdateInstructions>()
-    /** Instructions for how to update [topList] in the UI. */
-    val topInstructions: Event<UpdateInstructions>
-        get() = _topInstructions
-
     private val _favoritesList = MutableStateFlow(listOf<Song>())
     /** The favorite songs, newest first, to be shown in the Favorites tab. */
     val favoritesList: StateFlow<List<Song>>
@@ -139,11 +129,6 @@ constructor(
     /** Instructions for how to update [favoritesList] in the UI. */
     val favoritesInstructions: Event<UpdateInstructions>
         get() = _favoritesInstructions
-
-    private val _topSinceMs = MutableStateFlow(0L)
-    /** When play counting started, as unix time in milliseconds. */
-    val topSinceMs: StateFlow<Long>
-        get() = _topSinceMs
 
     private val _empty = MutableStateFlow(false)
     val empty: StateFlow<Boolean>
@@ -227,12 +212,8 @@ constructor(
                 _playlistInstructions.put(instructions)
                 _playlistList.value = homeGenerator.playlists()
             }
-            MusicType.TOP -> {
-                _topInstructions.put(instructions)
-                _topSinceMs.value = homeGenerator.topSinceMs()
-                _topList.value = homeGenerator.top()
-            }
-            // The Activity tab loads its own data.
+            // Most played lives in the Activity tab, which loads its own data.
+            MusicType.TOP,
             MusicType.STATS -> {}
             MusicType.FAVORITES -> {
                 _favoritesInstructions.put(instructions)

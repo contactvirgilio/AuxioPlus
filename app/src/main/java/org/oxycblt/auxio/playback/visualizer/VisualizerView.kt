@@ -85,6 +85,10 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
     private val peakLevels = FloatArray(MAX_BARS)
     private val peakHolds = FloatArray(MAX_BARS)
     private val peakSpeeds = FloatArray(MAX_BARS)
+    private val firstBins = IntArray(MAX_BARS)
+    private val lastBins = IntArray(MAX_BARS)
+    private var binsForCount = -1
+    private var binsForRate = -1
     private val barRect = RectF()
     private val barPaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val peakPaint = Paint(Paint.ANTI_ALIAS_FLAG)
@@ -247,11 +251,21 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
     private fun updateBars(dt: Float) {
         spectrum.analyze(samples)
         val count = barCount
-        val maxFrequency = min(Spectrum.MAX_FREQUENCY, buffer.sampleRate / 2f)
+        val sampleRate = buffer.sampleRate
+        // Which frequencies belong to which bar only changes with the width or the audio format.
+        if (count != binsForCount || sampleRate != binsForRate) {
+            binsForCount = count
+            binsForRate = sampleRate
+            val maxFrequency = min(Spectrum.MAX_FREQUENCY, sampleRate / 2f)
+            for (bar in 0 until count) {
+                val low = Spectrum.logFrequency(bar.toFloat() / count, maxFrequency)
+                val high = Spectrum.logFrequency((bar + 1f) / count, maxFrequency)
+                firstBins[bar] = spectrum.binFor(low, sampleRate)
+                lastBins[bar] = max(firstBins[bar], spectrum.binFor(high, sampleRate))
+            }
+        }
         for (bar in 0 until count) {
-            val low = Spectrum.logFrequency(bar.toFloat() / count, maxFrequency)
-            val high = Spectrum.logFrequency((bar + 1f) / count, maxFrequency)
-            val target = levelFor(spectrum.peakDecibels(low, high, buffer.sampleRate))
+            val target = levelFor(spectrum.peakDecibels(firstBins[bar], lastBins[bar]))
 
             // Jump up straight away, fall back gradually, like foobar2000.
             barLevels[bar] =

@@ -214,14 +214,9 @@ class MainFragment :
         binding.mainScrim.setOnClickListener { binding.homeNewPlaylistFab.close() }
         binding.sheetScrim.setOnClickListener { binding.homeNewPlaylistFab.close() }
         binding.homeShuffleFab.setOnClickListener {
-            // On the Top 50 tab, shuffle just those songs.
-            val top = homeModel.topList.value
+            // On the Favorites tab, shuffle just those songs.
             val favorites = homeModel.favoritesList.value
-            if (homeModel.currentTabType.value == MusicType.TOP && top.isNotEmpty()) {
-                playbackModel.shuffle(top.map { it.song })
-            } else if (
-                homeModel.currentTabType.value == MusicType.FAVORITES && favorites.isNotEmpty()
-            ) {
+            if (homeModel.currentTabType.value == MusicType.FAVORITES && favorites.isNotEmpty()) {
                 playbackModel.shuffle(favorites)
             } else {
                 playbackModel.shuffleAll()

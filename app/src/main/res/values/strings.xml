@@ -89,7 +89,6 @@
     <string name="lbl_import_playlists">Import playlists</string>
     <string name="lbl_top_50">Most Played</string>
     <!-- As in "Most played since 30 Oct 2026" -->
-    <string name="fmt_top_since">Most played since %s</string>
     <string name="lng_empty_top">No plays counted yet. A song counts once you\'ve listened to half of it, or 4 minutes.</string>
     <string name="lbl_import">Import</string>
     <string name="lbl_import_playlist">Import playlist</string>

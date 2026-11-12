@@ -69,6 +69,11 @@ class StatsFragment :
     }
     private var trackLimit = 5
     private var lastStats: Stats? = null
+    // What the lists are showing right now, so a refresh only touches what changed.
+    private var shownLibrary: Any? = null
+    private var shownTracks: List<Pair<Song, Int>>? = null
+    private var shownArtists: List<Pair<Artist, Int>>? = null
+    private var shownAlbums: List<Pair<Album, Int>>? = null
     private var range = Range.MONTH
     private var lastRefreshAt = 0L
 
@@ -133,6 +138,7 @@ class StatsFragment :
     override fun onDestroyBinding(binding: FragmentHomeStatsBinding) {
         super.onDestroyBinding(binding)
         playCountRepository.removeListener(this)
+        forgetShown()
     }
 
     override fun onResume() {
@@ -144,6 +150,12 @@ class StatsFragment :
 
     override fun onPlayCountsChanged() {
         if (binding != null && isResumed) refresh()
+    }
+
+    private fun forgetShown() {
+        shownTracks = null
+        shownArtists = null
+        shownAlbums = null
     }
 
     private fun chipFor(range: Range) =
@@ -314,30 +326,42 @@ class StatsFragment :
             )
             .forEach { it.isVisible = hasPlays }
 
+        // After the library reloads everything is rebuilt, since names and covers may differ.
+        val library = musicRepository.library
+        if (library !== shownLibrary) {
+            shownLibrary = library
+            forgetShown()
+        }
         showTracks(stats)
         val inflater = LayoutInflater.from(context)
-        binding.statsArtists.removeAllViews()
-        val top = stats.artists.firstOrNull()?.second ?: 1
-        stats.artists.forEachIndexed { i, (artist, plays) ->
-            val row = ItemStatsArtistBinding.inflate(inflater, binding.statsArtists, false)
-            row.statsRank.text = (i + 1).toString()
-            row.statsName.text = artist.name.resolve(context)
-            row.statsPlays.text = context.getPlural(R.plurals.fmt_play_count, plays)
-            row.statsShare.setProgressCompat(plays * 100 / top, false)
-            binding.statsArtists.addView(row.root)
+        if (stats.artists != shownArtists) {
+            shownArtists = stats.artists
+            binding.statsArtists.removeAllViews()
+            val top = stats.artists.firstOrNull()?.second ?: 1
+            stats.artists.forEachIndexed { i, (artist, plays) ->
+                val row = ItemStatsArtistBinding.inflate(inflater, binding.statsArtists, false)
+                row.statsRank.text = (i + 1).toString()
+                row.statsName.text = artist.name.resolve(context)
+                row.statsPlays.text = context.getPlural(R.plurals.fmt_play_count, plays)
+                row.statsShare.setProgressCompat(plays * 100 / top, false)
+                binding.statsArtists.addView(row.root)
+            }
         }
-        binding.statsAlbums.removeAllViews()
-        stats.albums.forEach { (album, plays) ->
-            val row = ItemStatsAlbumBinding.inflate(inflater, binding.statsAlbums, false)
-            row.statsCover.bind(album)
-            row.statsName.text = album.name.resolve(context)
-            row.statsInfo.text =
-                getString(
-                    R.string.fmt_top_song_info,
-                    album.artists.resolveNames(context),
-                    context.getPlural(R.plurals.fmt_play_count, plays),
-                )
-            binding.statsAlbums.addView(row.root)
+        if (stats.albums != shownAlbums) {
+            shownAlbums = stats.albums
+            binding.statsAlbums.removeAllViews()
+            stats.albums.forEach { (album, plays) ->
+                val row = ItemStatsAlbumBinding.inflate(inflater, binding.statsAlbums, false)
+                row.statsCover.bind(album)
+                row.statsName.text = album.name.resolve(context)
+                row.statsInfo.text =
+                    getString(
+                        R.string.fmt_top_song_info,
+                        album.artists.resolveNames(context),
+                        context.getPlural(R.plurals.fmt_play_count, plays),
+                    )
+                binding.statsAlbums.addView(row.root)
+            }
         }
         L.d("Showed ${stats.plays} plays for $range")
     }
@@ -349,17 +373,35 @@ class StatsFragment :
         val inflater = LayoutInflater.from(context)
         val shown = stats.tracks.take(trackLimit)
         val songs = shown.map { it.first }
+        val before = shownTracks
+        if (shown == before) return
+        shownTracks = shown
+        fun info(song: Song, plays: Int) =
+            context.getString(
+                R.string.fmt_top_song_info,
+                song.artists.first().name.resolve(context),
+                context.getPlural(R.plurals.fmt_play_count, plays),
+            )
+        // The same songs in the same order: only the play counts need touching.
+        if (
+            before != null &&
+                binding.statsTracks.childCount == shown.size &&
+                before.map { it.first } == songs
+        ) {
+            shown.forEachIndexed { i, (song, plays) ->
+                if (before[i].second != plays) {
+                    ItemTopSongBinding.bind(binding.statsTracks.getChildAt(i)).topInfo.text =
+                        info(song, plays)
+                }
+            }
+            return
+        }
         binding.statsTracks.removeAllViews()
         shown.forEachIndexed { i, (song, plays) ->
             val row = ItemTopSongBinding.inflate(inflater, binding.statsTracks, false)
             row.topCover.bind(song)
             row.topName.text = song.name.resolve(context)
-            row.topInfo.text =
-                context.getString(
-                    R.string.fmt_top_song_info,
-                    song.artists.first().name.resolve(context),
-                    context.getPlural(R.plurals.fmt_play_count, plays),
-                )
+            row.topInfo.text = info(song, plays)
             row.topRank.text = (i + 1).toString()
             row.topRank.setTextColor(
                 context.getAttrColorCompat(

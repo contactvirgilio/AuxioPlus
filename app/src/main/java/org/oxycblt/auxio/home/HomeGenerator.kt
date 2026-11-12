@@ -25,7 +25,6 @@ import org.oxycblt.auxio.list.adapter.UpdateInstructions
 import org.oxycblt.auxio.music.FavoritesRepository
 import org.oxycblt.auxio.music.MusicRepository
 import org.oxycblt.auxio.music.MusicType
-import org.oxycblt.auxio.playback.stats.PlayCountRepository
 import org.oxycblt.musikr.Album
 import org.oxycblt.musikr.Artist
 import org.oxycblt.musikr.Genre
@@ -51,12 +50,6 @@ interface HomeGenerator {
 
     fun playlists(): List<Playlist>
 
-    /** The most played songs that are in the library, most played first. */
-    fun top(): List<TopSong>
-
-    /** When play counting started, as unix time in milliseconds. */
-    fun topSinceMs(): Long
-
     /** The songs marked as favorites that are in the library, newest first. */
     fun favorites(): List<Song>
 
@@ -81,7 +74,6 @@ constructor(
     private val homeSettings: HomeSettings,
     private val listSettings: ListSettings,
     private val musicRepository: MusicRepository,
-    private val playCountRepository: PlayCountRepository,
     private val favoritesRepository: FavoritesRepository,
 ) : HomeGenerator.Factory {
     override fun create(invalidator: HomeGenerator.Invalidator): HomeGenerator =
@@ -90,7 +82,6 @@ constructor(
             homeSettings,
             listSettings,
             musicRepository,
-            playCountRepository,
             favoritesRepository,
         )
 }
@@ -100,29 +91,22 @@ private class HomeGeneratorImpl(
     private val homeSettings: HomeSettings,
     private val listSettings: ListSettings,
     private val musicRepository: MusicRepository,
-    private val playCountRepository: PlayCountRepository,
     private val favoritesRepository: FavoritesRepository,
 ) :
     HomeGenerator,
     HomeSettings.Listener,
     ListSettings.Listener,
     MusicRepository.UpdateListener,
-    PlayCountRepository.Listener,
     FavoritesRepository.Listener {
     override fun attach() {
         favoritesRepository.addListener(this)
         homeSettings.registerListener(this)
         listSettings.registerListener(this)
         musicRepository.addUpdateListener(this)
-        playCountRepository.addListener(this)
     }
 
     override fun onFavoritesChanged() {
         invalidator.invalidateMusic(MusicType.FAVORITES, UpdateInstructions.Diff)
-    }
-
-    override fun onPlayCountsChanged() {
-        invalidator.invalidateMusic(MusicType.TOP, UpdateInstructions.Diff)
     }
 
     override fun onTabsChanged() {
@@ -173,7 +157,6 @@ private class HomeGeneratorImpl(
             invalidator.invalidateMusic(MusicType.ALBUMS, UpdateInstructions.Diff)
             invalidator.invalidateMusic(MusicType.ARTISTS, UpdateInstructions.Diff)
             invalidator.invalidateMusic(MusicType.GENRES, UpdateInstructions.Diff)
-            invalidator.invalidateMusic(MusicType.TOP, UpdateInstructions.Diff)
             invalidator.invalidateMusic(MusicType.FAVORITES, UpdateInstructions.Diff)
         }
 
@@ -185,7 +168,6 @@ private class HomeGeneratorImpl(
 
     override fun release() {
         favoritesRepository.removeListener(this)
-        playCountRepository.removeListener(this)
         musicRepository.removeUpdateListener(this)
         listSettings.unregisterListener(this)
         homeSettings.unregisterListener(this)
@@ -216,16 +198,6 @@ private class HomeGeneratorImpl(
         musicRepository.library?.let { listSettings.playlistSort.playlists(it.playlists) }
             ?: emptyList()
 
-    override fun top(): List<TopSong> {
-        val library = musicRepository.library ?: return emptyList()
-        // Songs that are no longer in the library are skipped, so ask for some spare entries.
-        return playCountRepository
-            .top(TOP_LIMIT * 2)
-            .mapNotNull { (uid, entry) -> library.findSong(uid)?.let { it to entry.count } }
-            .take(TOP_LIMIT)
-            .mapIndexed { i, (song, plays) -> TopSong(song, i + 1, plays) }
-    }
-
     override fun favorites(): List<Song> {
         val library = musicRepository.library ?: return emptyList()
         return favoritesRepository.uids().mapNotNull { uid ->
@@ -233,18 +205,5 @@ private class HomeGeneratorImpl(
         }
     }
 
-    override fun topSinceMs() = playCountRepository.sinceMs
-
     override fun tabs() = homeSettings.homeTabs.filterIsInstance<Tab.Visible>().map { it.type }
 }
-
-/**
- * A song in the Top 50 tab.
- *
- * @param song The song.
- * @param rank Its place in the list, starting at 1.
- * @param plays How many times it has been played.
- */
-data class TopSong(val song: Song, val rank: Int, val plays: Int)
-
-private const val TOP_LIMIT = 50

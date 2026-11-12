@@ -49,7 +49,6 @@ import org.oxycblt.auxio.home.list.GenreListFragment
 import org.oxycblt.auxio.home.list.PlaylistListFragment
 import org.oxycblt.auxio.home.list.SongListFragment
 import org.oxycblt.auxio.home.list.StatsFragment
-import org.oxycblt.auxio.home.list.TopSongListFragment
 import org.oxycblt.auxio.home.tabs.NamedTabStrategy
 import org.oxycblt.auxio.home.tabs.Tab
 import org.oxycblt.auxio.list.ListViewModel
@@ -277,7 +276,7 @@ class HomeFragment : SelectionFragment<FragmentHomeBinding>() {
                 MusicType.ARTISTS -> R.id.home_artist_recycler
                 MusicType.GENRES -> R.id.home_genre_recycler
                 MusicType.PLAYLISTS -> R.id.home_playlist_recycler
-                MusicType.TOP -> R.id.home_top_recycler
+                MusicType.TOP,
                 MusicType.STATS -> R.id.home_stats_scroll
                 MusicType.FAVORITES -> R.id.home_favorites_recycler
             }
@@ -559,7 +558,8 @@ class HomeFragment : SelectionFragment<FragmentHomeBinding>() {
                 MusicType.ARTISTS -> ArtistListFragment()
                 MusicType.GENRES -> GenreListFragment()
                 MusicType.PLAYLISTS -> PlaylistListFragment()
-                MusicType.TOP -> TopSongListFragment()
+                // Most played lives in the Activity tab.
+                MusicType.TOP,
                 MusicType.STATS -> StatsFragment()
                 MusicType.FAVORITES -> FavoritesListFragment()
             }

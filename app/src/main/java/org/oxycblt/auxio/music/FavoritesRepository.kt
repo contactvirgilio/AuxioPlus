@@ -111,7 +111,9 @@ class FavoritesRepository @Inject constructor(@ApplicationContext context: Conte
             favorites = updated
         }
         if (added.isEmpty()) return 0
-        scope.launch { added.forEachIndexed { i, key -> database.add(key, now - i) } }
+        // One write for the whole lot instead of one per song.
+        val rows = added.mapIndexed { i, key -> key to now - i }
+        scope.launch { database.addAll(rows) }
         notifyListeners()
         return added.size
     }
@@ -165,6 +167,38 @@ class FavoritesRepository @Inject constructor(@ApplicationContext context: Conte
                 )
             } catch (e: Exception) {
                 L.e("Could not save favorite: $e")
+            }
+        }
+
+        fun addAll(rows: List<Pair<String, Long>>) {
+            val db =
+                try {
+                    writableDatabase
+                } catch (e: Exception) {
+                    L.e("Could not save favorites: $e")
+                    return
+                }
+            try {
+                db.beginTransaction()
+                for ((uid, addedAt) in rows) {
+                    val values = ContentValues().apply {
+                        put("uid", uid)
+                        put("added_at", addedAt)
+                    }
+                    db.insertWithOnConflict(
+                        "favorites",
+                        null,
+                        values,
+                        SQLiteDatabase.CONFLICT_REPLACE,
+                    )
+                }
+                db.setTransactionSuccessful()
+            } catch (e: Exception) {
+                L.e("Could not save favorites: $e")
+            } finally {
+                try {
+                    db.endTransaction()
+                } catch (e: Exception) {}
             }
         }
 

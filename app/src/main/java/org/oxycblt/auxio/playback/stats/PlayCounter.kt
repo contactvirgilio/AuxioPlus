@@ -103,7 +103,7 @@ constructor(
             tickJob =
                 scope?.launch {
                     while (isActive) {
-                        delay(TICK_MS)
+                        delay(nextTickMs())
                         tick()
                     }
                 }
@@ -112,6 +112,19 @@ constructor(
             tickJob = null
         }
     }
+
+    /**
+     * How long to wait before looking at playback again. Usually [TICK_MS], but sooner when the
+     * song is about to have been listened to for long enough, so short songs still count on time.
+     */
+    private fun nextTickMs(): Long {
+        val song = playbackManager.currentSong
+        if (counted || song == null || song.uid != currentUid) return TICK_MS
+        return (thresholdFor(song) - listenedMs).coerceIn(MIN_TICK_MS, TICK_MS)
+    }
+
+    private fun thresholdFor(song: Song) =
+        (song.durationMs / 2).coerceIn(MIN_THRESHOLD_MS, MAX_THRESHOLD_MS)
 
     private fun startNewListen(song: Song?) {
         currentUid = song?.uid
@@ -145,17 +158,18 @@ constructor(
             listenedMs += delta
         }
 
-        val threshold = (song.durationMs / 2).coerceIn(MIN_THRESHOLD_MS, MAX_THRESHOLD_MS)
-        if (!counted && listenedMs >= threshold) {
+        if (!counted && listenedMs >= thresholdFor(song)) {
             counted = true
             playCountRepository.recordPlay(song.uid)
         }
     }
 
     private companion object {
-        const val TICK_MS = 1000L
-        const val MAX_TICK_ADVANCE_MS = 3000L
-        const val RESTART_WINDOW_MS = 5000L
+        const val TICK_MS = 5000L
+        const val MIN_TICK_MS = 250L
+        // Both leave room for a late tick.
+        const val MAX_TICK_ADVANCE_MS = 8000L
+        const val RESTART_WINDOW_MS = 10_000L
         const val MIN_THRESHOLD_MS = 1000L
         const val MAX_THRESHOLD_MS = 4 * 60 * 1000L
     }
