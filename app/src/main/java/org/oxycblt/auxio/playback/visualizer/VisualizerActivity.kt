@@ -93,7 +93,7 @@ class VisualizerActivity : AppCompatActivity() {
             hide(WindowInsetsCompat.Type.systemBars())
         }
 
-        // A rare or weird palette shows its name for a moment and gives a double tap of haptics.
+        // A rare, legendary or unique palette shows its name for a moment and gives a double tap of haptics.
         binding.visualizerFull.onPresetShown = { preset ->
             val label = binding.visualizerPalette
             label.text = preset.name

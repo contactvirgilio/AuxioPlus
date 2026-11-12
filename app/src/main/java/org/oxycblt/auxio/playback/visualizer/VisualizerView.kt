@@ -92,12 +92,11 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
     private val barRect = RectF()
     private val barPaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val peakPaint = Paint(Paint.ANTI_ALIAS_FLAG)
-    private val cycleColors = IntArray(3)
-    private val gradientColors = IntArray(3)
+    private val cycleColors = IntArray(Ramp.SIZE)
+    private val gradientColors = IntArray(Ramp.SIZE)
     private var gradientHeight = -1f
-    private val gradientStops = floatArrayOf(0f, 0.55f, 1f)
 
-    /** Called when a rare or weird palette shows up, so the full screen page can say so. */
+    /** Called when a hand-picked palette shows up, so the full screen page can say so. */
     var onPresetShown: ((Preset) -> Unit)? = null
 
     private var announced: Preset? = null
@@ -183,7 +182,7 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
 
     private fun announce(preset: Preset) {
         PaletteCollection.get(context).add(preset.id)
-        if (!preset.weird) sparkleUntil = SystemClock.elapsedRealtime() + SPARKLE_MS
+        if (preset.tier != Tier.UNIQUE) sparkleUntil = SystemClock.elapsedRealtime() + SPARKLE_MS
         onPresetShown?.invoke(preset)
     }
 
@@ -313,11 +312,11 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
                             0f,
                             0f,
                             gradientColors.copyOf(),
-                            gradientStops,
+                            null,
                             Shader.TileMode.CLAMP,
                         )
                 }
-                peakPaint.color = cycleColors[2]
+                peakPaint.color = cycleColors[Ramp.SIZE - 1]
             }
         }
 
@@ -345,9 +344,9 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
      */
     private fun updateCycleColors() {
         if (!paletteReady) {
-            currentPalette = IntArray(3)
+            currentPalette = IntArray(Ramp.SIZE)
             currentPreset = randomPalette(currentPalette)
-            nextPalette = IntArray(3)
+            nextPalette = IntArray(Ramp.SIZE)
             nextPreset = randomPalette(nextPalette)
             paletteStart = SystemClock.elapsedRealtime()
             paletteReady = true
@@ -385,8 +384,12 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
                 if (within > interval - fade) (within - (interval - fade)).toFloat() / fade
                 else 0f
         }
-        for (i in 0 until 3) {
-            cycleColors[i] = ColorUtils.blendARGB(currentPalette[i], nextPalette[i], t)
+        if (t <= 0f) {
+            currentPalette.copyInto(cycleColors)
+        } else {
+            for (i in 0 until Ramp.SIZE) {
+                cycleColors[i] = ColorUtils.blendARGB(currentPalette[i], nextPalette[i], t)
+            }
         }
         // A preset counts as seen once it's more than half faded in.
         val showing = if (t >= 0.5f) nextPreset else currentPreset
@@ -406,19 +409,24 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
     }
 
     /**
-     * Fill [into] with a brand new random palette of three colours, bottom to top. The hue always
-     * jumps well away from the previous palette so that two in a row never look alike.
+     * Fill [into] with a new palette as a [Ramp]. Nearly always that is a brand new random one of
+     * three colours; now and then it is one of the hand-picked [Presets], which is then returned.
+     * The hue of a random palette always jumps well away from the previous one so that two in a
+     * row never look alike.
      */
     private fun randomPalette(into: IntArray): Preset? {
         val roll = random.nextFloat()
-        if (roll < WEIRD_CHANCE) {
-            return Presets.WEIRD[random.nextInt(Presets.WEIRD.size)].also {
-                it.colors.copyInto(into)
+        val tier =
+            when {
+                roll < UNIQUE_CHANCE -> Tier.UNIQUE
+                roll < UNIQUE_CHANCE + LEGENDARY_CHANCE -> Tier.LEGENDARY
+                roll < UNIQUE_CHANCE + LEGENDARY_CHANCE + RARE_CHANCE -> Tier.RARE
+                else -> null
             }
-        }
-        if (roll < WEIRD_CHANCE + RARE_CHANCE) {
-            return Presets.RARE[random.nextInt(Presets.RARE.size)].also {
-                it.colors.copyInto(into)
+        if (tier != null) {
+            val presets = Presets.of(tier)
+            return presets[random.nextInt(presets.size)].also {
+                Ramp.fill(into, it.colors, it.banded)
             }
         }
         // Everything is random across the whole colour wheel, with no preset colours and no
@@ -437,19 +445,21 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
         val dark = 0.2f + random.nextFloat() * 0.3f
         val lift = 0.08f + random.nextFloat() * 0.1f
         lastHue = hue
+        val colors = randomColors
         for (i in 0 until 3) {
             // Every stop gets a little of its own saturation and lightness, so palettes differ in
             // more than just their hue.
             val s = (saturation + (random.nextFloat() - 0.5f) * 0.2f).coerceIn(0.3f, 1f)
             val l = (dark + i * lift + (random.nextFloat() - 0.5f) * 0.06f).coerceIn(0.15f, 0.8f)
-            into[i] = hsl(hue + i * sweep, s, l)
+            colors[i] = hsl(hue + i * sweep, s, l)
         }
         // Half the time run it light to dark instead of dark to light.
         if (random.nextBoolean()) {
-            val first = into[0]
-            into[0] = into[2]
-            into[2] = first
+            val first = colors[0]
+            colors[0] = colors[2]
+            colors[2] = first
         }
+        Ramp.fill(into, colors, false)
         return null
     }
 
@@ -460,6 +470,7 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
         // The palettes are shared by every visualizer, so the small one and the full screen one
         // always show the same colours at the same moment.
         val random = Random()
+        val randomColors = IntArray(3)
         var lastHue = random.nextFloat() * 360f
         var paletteReady = false
         lateinit var currentPalette: IntArray
@@ -485,11 +496,14 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
 
         const val MIN_HUE_JUMP = 60f
 
-        /** How often a palette is one of the hand-picked rare ones: about 1 in 1000. */
-        const val RARE_CHANCE = 0.001f
+        /** How often a palette is one of the rare presets: 1 in 50. */
+        const val RARE_CHANCE = 0.02f
 
-        /** How often a palette is one of the weird ones: about 1 in 5000. */
-        const val WEIRD_CHANCE = 0.0002f
+        /** How often a palette is one of the legendary presets: 1 in 200. */
+        const val LEGENDARY_CHANCE = 0.005f
+
+        /** How often a palette is one of the unique presets: 1 in 500. */
+        const val UNIQUE_CHANCE = 0.002f
 
         const val ANNOUNCE_MS = 2000L
         const val SPARKLE_MS = 2200L

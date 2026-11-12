@@ -23,6 +23,7 @@ import android.graphics.drawable.GradientDrawable
 import android.view.View
 import android.widget.GridLayout
 import android.widget.LinearLayout
+import android.widget.ScrollView
 import android.widget.TextView
 import androidx.navigation.fragment.findNavController
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -71,12 +72,14 @@ class UIPreferenceFragment : BasePreferenceFragment(R.xml.preferences_ui) {
                 R.string.fmt_palette_summary,
                 Presets.RARE.count { it.id in seen },
                 Presets.RARE.size,
-                Presets.WEIRD.count { it.id in seen },
-                Presets.WEIRD.size,
+                Presets.LEGENDARY.count { it.id in seen },
+                Presets.LEGENDARY.size,
+                Presets.UNIQUE.count { it.id in seen },
+                Presets.UNIQUE.size,
             )
     }
 
-    /** A dialog with a circle for every rare and weird palette, filled in once it's been seen. */
+    /** A dialog with a circle for every hand-picked palette, filled in once it's been seen. */
     private fun showCollection(preference: Preference) {
         val context = requireContext()
         val seen = PaletteCollection.get(context).seen()
@@ -92,7 +95,7 @@ class UIPreferenceFragment : BasePreferenceFragment(R.xml.preferences_ui) {
             TextView(context).apply {
                 setText(R.string.lbl_palette_hint)
                 setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_BodyMedium)
-                setPadding(0, dp(16), 0, 0)
+                setPadding(0, dp(8), 0, 0)
             }
         fun section(label: Int, presets: List<Preset>) {
             root.addView(
@@ -117,7 +120,14 @@ class UIPreferenceFragment : BasePreferenceFragment(R.xml.preferences_ui) {
                             if (found) {
                                 GradientDrawable(
                                         GradientDrawable.Orientation.BOTTOM_TOP,
-                                        preset.colors,
+                                        when {
+                                            // Doubled up, stripes stay mostly crisp.
+                                            preset.banded ->
+                                                preset.colors.flatMap { listOf(it, it) }.toIntArray()
+                                            preset.colors.size == 1 ->
+                                                intArrayOf(preset.colors[0], preset.colors[0])
+                                            else -> preset.colors
+                                        },
                                     )
                                     .apply { shape = GradientDrawable.OVAL }
                             } else {
@@ -145,13 +155,15 @@ class UIPreferenceFragment : BasePreferenceFragment(R.xml.preferences_ui) {
             }
             root.addView(grid)
         }
-        section(R.string.lbl_palettes_rare, Presets.RARE)
-        section(R.string.lbl_palettes_weird, Presets.WEIRD)
+        // The name of a tapped palette goes at the top, where it stays in view.
         root.addView(hint)
+        section(R.string.lbl_palettes_rare, Presets.RARE)
+        section(R.string.lbl_palettes_legendary, Presets.LEGENDARY)
+        section(R.string.lbl_palettes_unique, Presets.UNIQUE)
 
         MaterialAlertDialogBuilder(context)
             .setTitle(R.string.set_palette_collection)
-            .setView(root)
+            .setView(ScrollView(context).apply { addView(root) })
             .setPositiveButton(android.R.string.ok, null)
             .show()
     }

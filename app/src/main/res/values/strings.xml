@@ -249,9 +249,10 @@
     <string name="lbl_brightness">Brightness</string>
     <string name="set_visualizer_interval">Colour change interval</string>
     <string name="set_palette_collection">Palettes discovered</string>
-    <string name="fmt_palette_summary">Rare %1$d of %2$d · Weird %3$d of %4$d</string>
+    <string name="fmt_palette_summary">Rare %1$d of %2$d · Legendary %3$d of %4$d · Unique %5$d of %6$d</string>
     <string name="lbl_palettes_rare">Rare</string>
-    <string name="lbl_palettes_weird">Weird</string>
+    <string name="lbl_palettes_legendary">Legendary</string>
+    <string name="lbl_palettes_unique">Unique</string>
     <string name="fmt_palette_count">%1$s · %2$d of %3$d</string>
     <string name="lbl_palette_hint">Tap a palette</string>
     <string name="lbl_palette_unknown">Not found yet</string>
