@@ -146,7 +146,6 @@ class VisualizerActivity : AppCompatActivity() {
             )
         }
 
-        binding.visualizerPill.maxWidth = (resources.displayMetrics.widthPixels * 0.9f).toInt()
         binding.visualizerPill.isVisibleOrGone(false)
 
         // A tap on the pill does nothing. Dragging along it seeks: the time shows while the
@@ -307,18 +306,20 @@ class VisualizerActivity : AppCompatActivity() {
             trophyText = null
             pill.setBackgroundResource(R.drawable.bg_visualizer_pill_progress)
         }
-        // One width for everything the pill says, so it does not jump about.
+        // The pill is always the same size, whatever it says: a fixed share of the narrow side of
+        // the screen. Anything longer scrolls inside it.
+        val metrics = resources.displayMetrics
+        val pillWidth = (minOf(metrics.widthPixels, metrics.heightPixels) * PILL_WIDTH).toInt()
+        val roomForText = pillWidth - horizontalPadding
         val widest =
             maxOf(
                 pill.paint.measureText(songText.toString()),
                 trophyText?.let { pill.paint.measureText(it.toString()) } ?: 0f,
             )
-        val max = (resources.displayMetrics.widthPixels * 0.9f).toInt()
-        pill.layoutParams =
-            pill.layoutParams.apply {
-                width = (widest + horizontalPadding + 2).toInt().coerceAtMost(max)
-            }
-        pill.gravity = Gravity.CENTER
+        pill.layoutParams = pill.layoutParams.apply { width = pillWidth }
+        // Short text sits in the middle; long text starts at the left so it can scroll.
+        pill.isSelected = true
+        pill.gravity = if (widest <= roomForText) Gravity.CENTER else Gravity.CENTER_VERTICAL or Gravity.START
         renderPill()
         pill.isVisibleOrGone(true)
     }
@@ -494,5 +495,6 @@ class VisualizerActivity : AppCompatActivity() {
         const val BAND_BOTTOM = 0.82f
         const val LEVEL_MS = 900L
         const val FLIP_MS = 2600L
+        const val PILL_WIDTH = 0.69f
     }
 }
