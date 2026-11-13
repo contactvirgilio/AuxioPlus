@@ -306,16 +306,18 @@ class VisualizerActivity : AppCompatActivity() {
             trophyText = null
             pill.setBackgroundResource(R.drawable.bg_visualizer_pill_progress)
         }
-        // The pill is always the same size, whatever it says: a fixed share of the narrow side of
-        // the screen. Anything longer scrolls inside it.
+        // The pill is as wide as what it says, up to a share of the narrow side of the screen.
+        // Anything longer scrolls inside it. The song and its trophy text share one width, so
+        // the pill does not jump about when the words swap.
         val metrics = resources.displayMetrics
-        val pillWidth = (minOf(metrics.widthPixels, metrics.heightPixels) * PILL_WIDTH).toInt()
-        val roomForText = pillWidth - horizontalPadding
+        val maxWidth = (minOf(metrics.widthPixels, metrics.heightPixels) * PILL_MAX_WIDTH).toInt()
         val widest =
             maxOf(
                 pill.paint.measureText(songText.toString()),
                 trophyText?.let { pill.paint.measureText(it.toString()) } ?: 0f,
             )
+        val pillWidth = (widest + horizontalPadding + 2).toInt().coerceAtMost(maxWidth)
+        val roomForText = pillWidth - horizontalPadding
         pill.layoutParams = pill.layoutParams.apply { width = pillWidth }
         // Short text sits in the middle; long text starts at the left so it can scroll.
         pill.isSelected = true
@@ -495,6 +497,6 @@ class VisualizerActivity : AppCompatActivity() {
         const val BAND_BOTTOM = 0.82f
         const val LEVEL_MS = 900L
         const val FLIP_MS = 2600L
-        const val PILL_WIDTH = 0.69f
+        const val PILL_MAX_WIDTH = 0.85f
     }
 }
