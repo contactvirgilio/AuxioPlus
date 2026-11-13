@@ -38,6 +38,13 @@
         android:textColor="#FFFFFF"
         android:textSize="18sp" />
 
+    <org.oxycblt.auxio.playback.visualizer.HeartBurstView
+        android:id="@+id/visualizer_heart"
+        android:layout_width="96dp"
+        android:layout_height="96dp"
+        android:layout_gravity="top|center_horizontal"
+        android:layout_marginTop="140dp" />
+
     <org.oxycblt.auxio.ui.MarqueeTextView
         android:id="@+id/visualizer_pill"
         android:layout_width="wrap_content"

@@ -87,6 +87,13 @@ class VisualizerActivity : AppCompatActivity() {
                 updateProgress(playbackModel.positionDs.value)
             }
         }
+    private val favoritesListener =
+        object : FavoritesRepository.Listener {
+            override fun onFavoritesChanged() {
+                showSong(playbackModel.song.value)
+                updateProgress(playbackModel.positionDs.value)
+            }
+        }
     // The pill: what it says, and dragging along it to seek.
     private var songText: CharSequence = ""
     private var trophyText: CharSequence? = null
@@ -179,6 +186,7 @@ class VisualizerActivity : AppCompatActivity() {
             true
         }
         playCountRepository.addListener(countsListener)
+        favoritesRepository.addListener(favoritesListener)
 
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
@@ -196,6 +204,7 @@ class VisualizerActivity : AppCompatActivity() {
     override fun onDestroy() {
         super.onDestroy()
         playCountRepository.removeListener(countsListener)
+        favoritesRepository.removeListener(favoritesListener)
         binding.visualizerPill.removeCallbacks(flipPill)
     }
 
@@ -269,7 +278,25 @@ class VisualizerActivity : AppCompatActivity() {
             listOfNotNull(artist, song.name.resolve(this), song.durationMs.formatDurationMs(false))
                 .joinToString(" – ")
         val trophy = Trophies.of(song)
-        val horizontalPadding = pill.paddingLeft + pill.paddingRight
+        var horizontalPadding = pill.paddingLeft + pill.paddingRight
+        // A small heart at the start of the pill for as long as the song is a favorite.
+        val density = resources.displayMetrics.density
+        val heart =
+            if (favoritesRepository.isFavorite(song.uid)) {
+                androidx.appcompat.content.res.AppCompatResources.getDrawable(
+                    this,
+                    R.drawable.ic_heart_red_24,
+                )
+            } else {
+                null
+            }
+        if (heart != null) {
+            val heartSize = (14 * density).toInt()
+            heart.setBounds(0, 0, heartSize, heartSize)
+            pill.compoundDrawablePadding = (6 * density).toInt()
+            horizontalPadding += heartSize + pill.compoundDrawablePadding
+        }
+        pill.setCompoundDrawablesRelative(heart, null, null, null)
         if (trophy != null) {
             trophyText = trophy.describeShort(this)
             trophyColor = trophy.tier.bright
@@ -320,12 +347,9 @@ class VisualizerActivity : AppCompatActivity() {
                         binding.visualizerLevel.performHapticFeedback(
                             android.view.HapticFeedbackConstants.LONG_PRESS
                         )
-                        showMessage(
-                            getString(
-                                if (added) R.string.lng_favorite_added
-                                else R.string.lng_favorite_removed
-                            )
-                        )
+                        // A heart pops in, or breaks apart. The pill follows by itself.
+                        if (added) binding.visualizerHeart.pop()
+                        else binding.visualizerHeart.breakApart()
                     }
 
                     override fun onDoubleTap(e: MotionEvent): Boolean {
