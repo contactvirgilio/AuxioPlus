@@ -37,6 +37,15 @@
             app:key="@string/set_key_visualizer_interval"
             app:title="@string/set_visualizer_interval" />
 
+        <SeekBarPreference
+            android:max="400"
+            app:defaultValue="150"
+            app:key="@string/set_key_bluetooth_delay"
+            app:min="0"
+            app:seekBarIncrement="10"
+            app:showSeekBarValue="true"
+            app:title="@string/set_bluetooth_delay" />
+
         <Preference
             app:key="@string/set_key_palette_collection"
             app:title="@string/set_palette_collection" />

@@ -32,6 +32,7 @@
     <string name="set_key_visualizer_mode" translatable="false">auxio_visualizer_mode</string>
     <string name="set_key_show_visualizer" translatable="false">auxio_show_visualizer</string>
     <string name="set_key_visualizer_interval" translatable="false">auxio_visualizer_interval</string>
+    <string name="set_key_bluetooth_delay" translatable="false">auxio_bluetooth_delay</string>
     <string name="set_key_import_playlists" translatable="false">auxio_import_playlists</string>
 
     <string name="set_key_headset_autoplay" translatable="false">auxio_headset_autoplay</string>
