@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2026 Auxio Project
- * HeartBurstView.kt is part of Auxio.
+ * LevelSliderView.kt is part of Auxio.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
