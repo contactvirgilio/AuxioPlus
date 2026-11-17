@@ -479,8 +479,18 @@ class VisualizerActivity : AppCompatActivity() {
     }
 
     private fun showLevel(label: String, level: Float) {
-        showMessage("$label ${(level * 100).roundToInt()}%")
+        val slider = if (label == getString(R.string.lbl_brightness)) binding.visualizerBrightness
+            else binding.visualizerVolume
+        slider.show(level, slider === binding.visualizerBrightness)
+        slider.removeCallbacks(hideSlider)
+        slider.animate().cancel()
+        slider.alpha = 1f
+        slider.postDelayed(hideSlider, LEVEL_MS)
+        hiding = slider
     }
+
+    private var hiding: android.view.View? = null
+    private val hideSlider = Runnable { hiding?.animate()?.alpha(0f)?.start() }
 
     private fun showMessage(text: String) {
         val view = binding.visualizerLevel
