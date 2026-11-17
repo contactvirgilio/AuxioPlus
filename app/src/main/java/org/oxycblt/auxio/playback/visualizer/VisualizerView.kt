@@ -614,7 +614,7 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
         const val BAR_FALL_PER_SECOND = 1.6f
         const val PEAK_HOLD_SECONDS = 0.35f
         const val PEAK_GRAVITY = 3f
-        const val BLUETOOTH_DELAY_MS = 150
+        const val BLUETOOTH_DELAY_MS = 200
         const val ROUTE_CHECK_NANOS = 2_000_000_000L
         const val BEAT_JUMP = 0.06f
         const val BEAT_BOOST = 0.12f
