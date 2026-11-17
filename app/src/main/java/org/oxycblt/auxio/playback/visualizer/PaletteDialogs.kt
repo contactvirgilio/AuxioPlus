@@ -154,7 +154,9 @@ object PaletteDialogs {
                 .setPositiveButton(R.string.lbl_apply_now) { _, _ ->
                     VisualizerView.applyPreset(preset)
                 }
-                .setNegativeButton(R.string.lbl_cancel, null)
+                .setNegativeButton(R.string.lbl_apply_session) { _, _ ->
+                    VisualizerView.applyPresetForSession(preset)
+                }
         if (offerCollection) {
             builder.setNeutralButton(R.string.lbl_palette_collection_short) { _, _ ->
                 showCollection(context)

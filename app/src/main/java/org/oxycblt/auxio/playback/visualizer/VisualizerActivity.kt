@@ -63,6 +63,7 @@ import org.oxycblt.musikr.Song
  * It is split in three columns:
  * - Left: double tap for the previous song, drag up or down for the brightness.
  * - Middle: tap once to play or pause.
+ * - Anywhere: hold to favorite or unfavorite the song.
  * - Right: double tap for the next song, drag up or down for the volume.
  */
 @AndroidEntryPoint
@@ -344,7 +345,7 @@ class VisualizerActivity : AppCompatActivity() {
                     }
 
                     override fun onLongPress(e: MotionEvent) {
-                        if (zone(e.x) != Zone.MIDDLE) return
+                        // Holding anywhere in the active area favorites the song.
                         val song = playbackModel.song.value ?: return
                         val added = favoritesRepository.toggle(song.uid)
                         binding.visualizerLevel.performHapticFeedback(

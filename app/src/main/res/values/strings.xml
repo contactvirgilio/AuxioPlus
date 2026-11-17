@@ -266,6 +266,7 @@
     <string name="lbl_palette_collection_short">Collection</string>
     <string name="set_visualizer_header">Visualizer</string>
     <string name="lbl_apply_now">Apply now</string>
+    <string name="lbl_apply_session">This session</string>
     <string name="lbl_palette_hint">Tap a palette</string>
     <string name="lbl_palette_unknown">Not found yet</string>
     <string name="set_visualizer_interval_60">Every minute</string>

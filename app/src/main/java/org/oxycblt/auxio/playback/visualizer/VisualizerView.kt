@@ -380,7 +380,17 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
         }
         val now = SystemClock.elapsedRealtime()
         val t: Float
-        if (intervalMs <= 0L) {
+        val locked = sessionPreset
+        if (locked != null) {
+            // Kept for the whole session: no cycling, no fading.
+            songFadeStart = 0L
+            if (currentPreset !== locked) {
+                Ramp.fill(currentPalette, locked.colors, locked.banded)
+                currentPreset = locked
+            }
+            nextPreset = locked
+            t = 0f
+        } else if (intervalMs <= 0L) {
             // Every song: hold the palette until the song changes, then fade into the next one.
             val song = playbackManager.currentSong?.uid
             if (song != lastSong) {
@@ -521,6 +531,7 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
          * until the next song), then the random palettes carry on as usual.
          */
         fun applyPreset(preset: Preset) {
+            sessionPreset = null
             if (!paletteReady) {
                 // Nothing has been drawn yet: start with it.
                 pendingPreset = preset
@@ -530,6 +541,15 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
             currentPreset = preset
             paletteStart = SystemClock.elapsedRealtime()
             songFadeStart = 0L
+        }
+
+        /** A palette kept until the app is closed, or until another one is applied. */
+        private var sessionPreset: Preset? = null
+
+        /** Keep [preset] on every visualizer until the app is closed. */
+        fun applyPresetForSession(preset: Preset) {
+            applyPreset(preset)
+            sessionPreset = preset
         }
         var nextPreset: Preset? = null
         var paletteStart = 0L
