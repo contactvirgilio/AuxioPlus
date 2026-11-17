@@ -39,6 +39,9 @@ class VisualizerBuffer @Inject constructor() {
     private var delayFrames = 0
     private val users = AtomicInteger(0)
 
+    /** Extra time in milliseconds before the audio is heard, such as the delay of Bluetooth. */
+    @Volatile var extraDelayMs = 0
+
     /** The sample rate of the audio in the buffer. */
     @Volatile
     var sampleRate = 44100
@@ -121,7 +124,10 @@ class VisualizerBuffer @Inject constructor() {
                 (elapsedNanos * sampleRate / 1_000_000_000L).coerceIn(0L, delayFrames.toLong())
             // Looking ahead centres the window on the moment being heard instead of ending there,
             // so the bars land on the beat instead of just after it.
-            val end = (written - delayFrames + elapsedFrames + lookAhead).coerceAtMost(written)
+            val extraFrames = (extraDelayMs.toLong() * sampleRate / 1000L)
+            val end =
+                (written - delayFrames - extraFrames + elapsedFrames + lookAhead)
+                    .coerceAtMost(written)
             val oldest = written - RING_SIZE
             for (i in 0 until count) {
                 val index = end - count + i

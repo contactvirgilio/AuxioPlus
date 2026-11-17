@@ -20,6 +20,7 @@ package org.oxycblt.auxio.playback.visualizer
 
 import android.content.Context
 import android.graphics.Canvas
+import android.media.AudioManager
 import android.graphics.Color
 import android.graphics.LinearGradient
 import android.graphics.Paint
@@ -252,6 +253,11 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
             else ((now - lastFrameNanos) / 1_000_000_000f).coerceIn(0f, MAX_FRAME_TIME)
         lastFrameNanos = now
 
+        if (now - lastRouteCheck > ROUTE_CHECK_NANOS) {
+            lastRouteCheck = now
+            buffer.extraDelayMs = if (onBluetooth()) BLUETOOTH_DELAY_MS else 0
+        }
+
         // When paused, act on silence so the bars settle down instead of freezing.
         if (!playbackManager.progression.isPlaying || !buffer.read(samples, FFT_SIZE, FFT_SIZE / 2)) {
             samples.fill(0f)
@@ -261,6 +267,19 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
 
         invalidate()
         postOnAnimation(frame)
+    }
+
+    private var lastRouteCheck = 0L
+
+    /** Whether the music is going out over Bluetooth, which delays the sound a little. */
+    @Suppress("DEPRECATION")
+    private fun onBluetooth(): Boolean {
+        val audio = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager ?: return false
+        return try {
+            audio.isBluetoothA2dpOn
+        } catch (e: Exception) {
+            false
+        }
     }
 
     private val barCount: Int
@@ -591,6 +610,8 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
         const val BAR_FALL_PER_SECOND = 1.6f
         const val PEAK_HOLD_SECONDS = 0.35f
         const val PEAK_GRAVITY = 3f
+        const val BLUETOOTH_DELAY_MS = 150
+        const val ROUTE_CHECK_NANOS = 2_000_000_000L
         const val BEAT_JUMP = 0.06f
         const val BEAT_BOOST = 0.12f
         const val BEAT_DECAY = 6f
