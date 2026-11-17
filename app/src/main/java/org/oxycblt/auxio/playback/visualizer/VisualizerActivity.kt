@@ -479,18 +479,20 @@ class VisualizerActivity : AppCompatActivity() {
     }
 
     private fun showLevel(label: String, level: Float) {
-        val slider = if (label == getString(R.string.lbl_brightness)) binding.visualizerBrightness
-            else binding.visualizerVolume
-        slider.show(level, slider === binding.visualizerBrightness)
-        slider.removeCallbacks(hideSlider)
+        val brightness = label == getString(R.string.lbl_brightness)
+        val slider = if (brightness) binding.visualizerBrightness else binding.visualizerVolume
+        slider.show(level, brightness)
+        // Each bar fades on its own timer, so showing one never leaves the other stuck.
+        slider.removeCallbacks(if (brightness) hideBrightness else hideVolume)
         slider.animate().cancel()
         slider.alpha = 1f
-        slider.postDelayed(hideSlider, LEVEL_MS)
-        hiding = slider
+        slider.postDelayed(if (brightness) hideBrightness else hideVolume, LEVEL_MS)
     }
 
-    private var hiding: android.view.View? = null
-    private val hideSlider = Runnable { hiding?.animate()?.alpha(0f)?.start() }
+    private val hideBrightness =
+        Runnable { binding.visualizerBrightness.animate().alpha(0f).setDuration(350).start() }
+    private val hideVolume =
+        Runnable { binding.visualizerVolume.animate().alpha(0f).setDuration(350).start() }
 
     private fun showMessage(text: String) {
         val view = binding.visualizerLevel
