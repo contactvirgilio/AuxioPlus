@@ -253,7 +253,7 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
         lastFrameNanos = now
 
         // When paused, act on silence so the bars settle down instead of freezing.
-        if (!playbackManager.progression.isPlaying || !buffer.read(samples, FFT_SIZE)) {
+        if (!playbackManager.progression.isPlaying || !buffer.read(samples, FFT_SIZE, FFT_SIZE / 2)) {
             samples.fill(0f)
         }
         sparkDt = dt
@@ -283,7 +283,13 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
             }
         }
         for (bar in 0 until count) {
-            val target = levelFor(spectrum.peakDecibels(firstBins[bar], lastBins[bar]))
+            targets[bar] = levelFor(spectrum.peakDecibels(firstBins[bar], lastBins[bar]))
+        }
+        updateBeat(count, dt)
+        for (bar in 0 until count) {
+            // A hit lifts the bars a little extra, most in the bass; they then fall as usual.
+            val bassWeight = 1f - 0.5f * bar / count
+            val target = min(1f, targets[bar] + beatKick * BEAT_BOOST * bassWeight)
 
             // Jump up straight away, fall back gradually, like foobar2000.
             barLevels[bar] =
@@ -302,6 +308,27 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
                 peakLevels[bar] = max(barLevels[bar], peakLevels[bar] - peakSpeeds[bar] * dt)
             }
         }
+    }
+
+    private val targets = FloatArray(MAX_BARS)
+    private var beatKick = 0f
+    private var energyAverage = 0f
+    private var beatCooldown = 0f
+
+    /** Spot sudden jumps in loudness (drums) and set [beatKick] for a moment. */
+    private fun updateBeat(count: Int, dt: Float) {
+        var energy = 0f
+        for (bar in 0 until count) energy += targets[bar]
+        energy /= count
+        val jump = energy - energyAverage
+        beatCooldown -= dt
+        if (jump > BEAT_JUMP && beatCooldown <= 0f) {
+            beatKick = min(1f, jump / (BEAT_JUMP * 3f))
+            beatCooldown = BEAT_COOLDOWN
+        }
+        beatKick = max(0f, beatKick - BEAT_DECAY * dt)
+        // The average follows the music slowly, so only sudden rises count as a hit.
+        energyAverage += (energy - energyAverage) * min(1f, dt * 4f)
     }
 
     override fun onDraw(canvas: Canvas) {
@@ -564,6 +591,10 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
         const val BAR_FALL_PER_SECOND = 1.6f
         const val PEAK_HOLD_SECONDS = 0.35f
         const val PEAK_GRAVITY = 3f
+        const val BEAT_JUMP = 0.06f
+        const val BEAT_BOOST = 0.12f
+        const val BEAT_DECAY = 6f
+        const val BEAT_COOLDOWN = 0.12f
         const val MAX_FRAME_TIME = 0.1f
         const val IDLE_CHECK_MS = 250L
         const val FADE_MS = 150L

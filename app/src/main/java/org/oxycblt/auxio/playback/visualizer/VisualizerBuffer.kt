@@ -104,9 +104,10 @@ class VisualizerBuffer @Inject constructor() {
      * Copy the [count] samples that are being heard right now into [out], oldest first. Parts of
      * [out] that there is no audio for are filled with silence.
      *
+     * @param lookAhead How many samples past the playhead the window may reach.
      * @return False if there is no audio at all, true otherwise.
      */
-    fun read(out: FloatArray, count: Int): Boolean {
+    fun read(out: FloatArray, count: Int, lookAhead: Int = 0): Boolean {
         synchronized(lock) {
             if (written == 0L) {
                 out.fill(0f, 0, count)
@@ -118,7 +119,9 @@ class VisualizerBuffer @Inject constructor() {
             val elapsedNanos = (System.nanoTime() - lastWriteNanos).coerceIn(0L, 1_000_000_000L)
             val elapsedFrames =
                 (elapsedNanos * sampleRate / 1_000_000_000L).coerceIn(0L, delayFrames.toLong())
-            val end = written - delayFrames + elapsedFrames
+            // Looking ahead centres the window on the moment being heard instead of ending there,
+            // so the bars land on the beat instead of just after it.
+            val end = (written - delayFrames + elapsedFrames + lookAhead).coerceAtMost(written)
             val oldest = written - RING_SIZE
             for (i in 0 until count) {
                 val index = end - count + i
