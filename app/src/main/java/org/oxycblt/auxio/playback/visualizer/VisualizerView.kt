@@ -255,11 +255,7 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
 
         if (now - lastRouteCheck > ROUTE_CHECK_NANOS) {
             lastRouteCheck = now
-            buffer.extraDelayMs =
-                if (onBluetooth()) {
-                    androidx.preference.PreferenceManager.getDefaultSharedPreferences(context)
-                        .getInt(context.getString(R.string.set_key_bluetooth_delay), BLUETOOTH_DELAY_MS)
-                } else 0
+            buffer.extraDelayMs = if (onBluetooth()) BLUETOOTH_DELAY_MS else 0
         }
 
         // When paused, act on silence so the bars settle down instead of freezing.

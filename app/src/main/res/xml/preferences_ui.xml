@@ -39,10 +39,6 @@
             app:title="@string/set_visualizer_interval" />
 
         <Preference
-            app:key="@string/set_key_bluetooth_delay"
-            app:title="@string/set_bluetooth_delay" />
-
-        <Preference
             app:key="@string/set_key_palette_collection"
             app:title="@string/set_palette_collection" />
 
