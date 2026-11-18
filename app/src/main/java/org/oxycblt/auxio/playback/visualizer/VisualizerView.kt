@@ -542,12 +542,25 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
         val lift = 0.08f + random.nextFloat() * 0.1f
         lastHue = hue
         val colors = randomColors
+        // A coin flip: half the palettes use plain HSL, the other half the same settings with
+        // even perceived brightness, so blues and purples stay visible and yellows don't glare.
+        val perceptual = random.nextBoolean()
         for (i in 0 until 3) {
             // Every stop gets a little of its own saturation and lightness, so palettes differ in
             // more than just their hue.
             val s = (saturation + (random.nextFloat() - 0.5f) * 0.2f).coerceIn(0.3f, 1f)
             val l = (dark + i * lift + (random.nextFloat() - 0.5f) * 0.06f).coerceIn(0.15f, 0.8f)
-            colors[i] = hsl(hue + i * sweep, s, l)
+            colors[i] =
+                if (perceptual) {
+                    // The darkest stop keeps a little more colour, so it doesn't turn muddy.
+                    oklch(
+                        0.36f + (l - 0.15f) * 0.75f,
+                        (if (i == 0) max(0.45f, s) else s) * 0.19f,
+                        hue + i * sweep + 29f,
+                    )
+                } else {
+                    hsl(hue + i * sweep, s, l)
+                }
         }
         // Half the time run it light to dark instead of dark to light.
         if (random.nextBoolean()) {
@@ -644,6 +657,40 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
 
         const val ANNOUNCE_MS = 2000L
         const val MAX_SPARKS = 120
+
+        /**
+         * A colour from OKLCH (perceptual lightness, chroma, hue). If it falls outside what the
+         * screen can show, the chroma is lowered until it fits.
+         */
+        private fun oklch(lightness: Float, chroma: Float, hue: Float): Int {
+            val angle = Math.toRadians(((hue % 360f + 360f) % 360f).toDouble())
+            var c = chroma.toDouble()
+            val lum = lightness.toDouble()
+            repeat(40) {
+                val a = c * kotlin.math.cos(angle)
+                val b = c * kotlin.math.sin(angle)
+                val l3 = cube(lum + 0.3963377774 * a + 0.2158037573 * b)
+                val m3 = cube(lum - 0.1055613458 * a - 0.0638541728 * b)
+                val s3 = cube(lum - 0.0894841775 * a - 1.2914855480 * b)
+                val r = 4.0767416621 * l3 - 3.3077115913 * m3 + 0.2309699292 * s3
+                val g = -1.2684380046 * l3 + 2.6097574011 * m3 - 0.3413193965 * s3
+                val bl = -0.0041960863 * l3 - 0.7034186147 * m3 + 1.7076147010 * s3
+                if ((r in -0.001..1.001 && g in -0.001..1.001 && bl in -0.001..1.001) || c < 0.001) {
+                    return Color.rgb(gamma(r), gamma(g), gamma(bl))
+                }
+                c *= 0.9
+            }
+            return Color.rgb(gamma(lum * lum * lum), gamma(lum * lum * lum), gamma(lum * lum * lum))
+        }
+
+        private fun cube(x: Double) = x * x * x
+
+        /** Linear light to an sRGB channel from 0 to 255. */
+        private fun gamma(x: Double): Int {
+            val v = x.coerceIn(0.0, 1.0)
+            val e = if (v <= 0.0031308) 12.92 * v else 1.055 * Math.pow(v, 1 / 2.4) - 0.055
+            return (e * 255).toInt().coerceIn(0, 255)
+        }
 
         private fun hsl(hue: Float, saturation: Float, lightness: Float) =
             ColorUtils.HSLToColor(floatArrayOf(((hue % 360f) + 360f) % 360f, saturation, lightness))
