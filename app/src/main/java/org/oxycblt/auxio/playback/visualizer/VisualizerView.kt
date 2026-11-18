@@ -425,6 +425,15 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
             paletteReady = true
         }
         val now = SystemClock.elapsedRealtime()
+        // While paused the palette clock stands still, so the colours carry on from the same
+        // point once the music does. Only short gaps count, so time with no visualizer on
+        // screen is not swallowed.
+        val tick = (now - lastCycleNow).coerceIn(0L, 1000L)
+        lastCycleNow = now
+        if (!playbackManager.progression.isPlaying && tick > 0L) {
+            paletteStart += tick
+            if (songFadeStart != 0L) songFadeStart += tick
+        }
         val t: Float
         val locked = sessionPreset
         if (locked != null) {
@@ -599,6 +608,7 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
         }
         var nextPreset: Preset? = null
         var paletteStart = 0L
+        private var lastCycleNow = 0L
         var lastSong: org.oxycblt.musikr.Music.UID? = null
         var songFadeStart = 0L
 
