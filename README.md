@@ -13,10 +13,6 @@
     </a>
     <img alt="Minimum SDK Version" src="https://img.shields.io/badge/API-24%2B-1450A8?style=flat">
 </p>
-<h4 align="center"><a href="/CHANGELOG.md">Changelog</a> | <a href="https://github.com/OxygenCobalt/Auxio/wiki">Wiki</a></h4>
-<p align="center">
-    <a href="https://hosted.weblate.org/engage/auxio/"><img height=64 src="https://hosted.weblate.org/widgets/auxio/-/strings/287x66-grey.png" alt="Translation status" /></a>
-</p>
 
 > **This is a personal fork of [Auxio](https://github.com/OxygenCobalt/Auxio) by Alexander Capehart, based on v4.1.5.**
 > It is built for my own use and is not affiliated with or supported by the original project.
