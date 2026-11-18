@@ -25,32 +25,33 @@
 ## What's different in AuxioPlus
 
 **Visualizer**
-- One visualizer, with a small version in Now Playing
-- Double-tap to open it fullscreen
-- Fullscreen gestures: tap to play/pause, double-tap left or right for previous or next, swipe up or down on the left for brightness and on the right for volume, hold the middle to favorite
-- Rotates with the sensor even when auto-rotate is off
+- One spectrum visualizer, small in Now Playing and fullscreen on double tap (rotates with the sensor)
+- Looks ahead and pulses on drum hits, and waits a little longer on Bluetooth so the bars match what you hear
 - Colours are random and change every 1, 2.5 or 5 minutes, or every song
-- 100 hand-picked easter egg palettes in three tiers (rare, legendary and unique), each shown by name when it appears
-- They sparkle when they appear, more so the rarer the tier
-- A collection in Settings that tracks the palettes you've discovered
-- A progress fill in the pill at the bottom, drag along it to seek
-- Preview and apply the palettes you have found
+
+**Fullscreen**
+- Tap the middle to play or pause, hold the middle to favorite
+- Double-tap left or right for previous or next
+- Drag up or down on the left for brightness and on the right for volume, with a level bar
+- A pill with the song, a heart for favorites and a trophy for top songs, drag along it to seek
+
+**Palettes**
+- 100 hand-picked easter egg palettes in three tiers: rare, legendary and unique
+- Each is shown by name when it appears and sparkles more the rarer it is
+- A collection in Settings tracks the ones you've found, with a preview you can apply now or for the session
 
 **Library**
 - Pinch to zoom Albums and Artists between list, small tiles and big tiles
-- Favorites tab with a heart in Now Playing, the song menu and fullscreen
-- No duplicate songs in a playlist
-- "Add all to favorites" for playlists
+- Favorites tab with its own sorting, and a heart in Now Playing, the song menu and fullscreen
+- No duplicate songs in a playlist, and "Add all to favorites" for playlists
 
 **Activity**
-- Listening time, plays and a chart for the week, month, year or all time
-- Weeks start on Monday
+- Listening time, plays and a chart for the week, month, year or all time (weeks start on Monday)
 - Top tracks (5, 25 or 50), top artists and top albums for each period
-- Trophies (bronze, silver, gold, diamond) for your most played songs, shown wherever they play
+- Trophies for your most played songs: bronze (25 plays), silver (50), gold (100) and diamond (150), shown wherever they play
 
 **Backup**
-- Pick one backup folder, used directly
-- One zip with playlists, favorites, activity and discovered palettes
+- One backup folder and one zip with playlists, favorites, activity and discovered palettes
 - One restore button that lets you choose what to bring back
 
 ## About
