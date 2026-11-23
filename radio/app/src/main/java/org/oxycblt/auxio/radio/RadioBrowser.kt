@@ -54,6 +54,8 @@ object RadioBrowser {
                             url = url,
                             logo = o.optString("favicon"),
                             info = listOf(quality, place).filter { it.isNotBlank() }.joinToString(" · "),
+                            homepage = o.optString("homepage"),
+                            country = o.optString("countrycode"),
                         )
                     )
                 }
@@ -101,7 +103,7 @@ object RadioBrowser {
         return out.toByteArray()
     }
 
-    const val USER_AGENT = "AuxioRadio/1.0"
+    const val USER_AGENT = "AuxioRadio/1.2 (https://github.com/contactvirgilio/AuxioPlus)"
 }
 
 /** Turns .pls and .m3u playlist links into the stream they point to. Others pass through. */

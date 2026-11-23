@@ -9,8 +9,6 @@ import android.os.SystemClock
 import android.util.AttributeSet
 import android.view.View
 import androidx.core.graphics.ColorUtils
-import com.google.android.material.R as MR
-import com.google.android.material.color.MaterialColors
 import java.util.Random
 import kotlin.math.hypot
 import kotlin.math.max
@@ -18,8 +16,8 @@ import kotlin.math.min
 import org.oxycblt.auxio.radio.NowPlaying
 
 /**
- * A speaker grille: a grid of dots in a rounded frame. The middle of the grille is the bass and the
- * edge the treble, like a speaker cone, and each dot grows and lights up with its band. Colours are
+ * A speaker grille: a grid of dots over the whole screen, corner to corner, with no frame. The
+ * middle of the grille is the bass and the edge the treble, like a speaker cone, and each dot grows and lights up with its band. Colours are
  * AuxioPlus palettes, fading to a new one on each new song (or every 2.5 minutes); now and then a
  * rare, legendary or unique preset turns up and the grille sparkles. Nothing is shown in words.
  */
@@ -38,11 +36,6 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
 
     private val levels = FloatArray(BANDS)
     private val dotPaint = Paint(Paint.ANTI_ALIAS_FLAG)
-    private val framePaint =
-        Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            style = Paint.Style.STROKE
-            color = MaterialColors.getColor(this@SpeakerView, MR.attr.colorOutlineVariant)
-        }
     private val sparkPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.WHITE }
     private val frameRect = RectF()
 
@@ -115,12 +108,10 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
-        // A frame with even margins; portrait or landscape, the grille fills most of the screen.
-        val margin = min(w, h) * 0.08f
-        frameRect.set(margin, margin * 1.6f, w - margin, h - margin * 1.6f)
-        framePaint.strokeWidth = 2f * density
-        spacing = max(14f * density, min(frameRect.width(), frameRect.height()) / 16f)
-        val inset = spacing * 0.9f
+        // No frame: the grille runs from corner to corner, half a step in from each edge.
+        frameRect.set(0f, 0f, w.toFloat(), h.toFloat())
+        spacing = max(14f * density, min(w, h) / 15f)
+        val inset = spacing / 2
         val cols = ((frameRect.width() - inset * 2) / spacing).toInt() + 1
         val rows = ((frameRect.height() - inset * 2) / spacing).toInt() + 1
         val left = frameRect.centerX() - (cols - 1) * spacing / 2
@@ -211,7 +202,6 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
 
     override fun onDraw(canvas: Canvas) {
         canvas.drawColor(Color.BLACK)
-        canvas.drawRoundRect(frameRect, spacing * 1.4f, spacing * 1.4f, framePaint)
         if (!paletteReady) return
         val minR = spacing * 0.1f
         val maxR = spacing * 0.46f

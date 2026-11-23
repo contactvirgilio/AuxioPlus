@@ -19,9 +19,13 @@ data class Station(
     val logo: String = "",
     /** A short line under the name, e.g. "MP3 128k · Lisbon, Portugal". */
     val info: String = "",
+    /** The station's website, if known: a place to look for its logo. */
+    val homepage: String = "",
+    /** Two-letter country code, if known: which Wikipedia to look in first. */
+    val country: String = "",
 ) {
     fun toJson(): JSONObject =
-        JSONObject().put("id", id).put("name", name).put("url", url).put("logo", logo).put("info", info)
+        JSONObject().put("id", id).put("name", name).put("url", url).put("logo", logo).put("info", info).put("homepage", homepage).put("country", country)
 
     fun toMediaItem(): MediaItem =
         MediaItem.Builder()
@@ -51,6 +55,8 @@ data class Station(
                 url = o.optString("url"),
                 logo = o.optString("logo"),
                 info = o.optString("info"),
+                homepage = o.optString("homepage"),
+                country = o.optString("country"),
             )
     }
 }
