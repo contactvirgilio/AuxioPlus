@@ -30,6 +30,7 @@
         <activity
             android:name=".visualizer.VisualizerActivity"
             android:exported="false"
+            android:screenOrientation="fullSensor"
             android:theme="@style/Theme.Radio.Visualizer" />
 
         <service

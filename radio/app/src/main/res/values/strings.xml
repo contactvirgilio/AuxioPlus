@@ -14,6 +14,9 @@
     <string name="lbl_stream_url">Stream URL</string>
     <string name="lbl_logo_url">Logo URL (optional)</string>
     <string name="lbl_search_hint">Search stations</string>
+    <string name="lbl_all_countries">All countries</string>
+    <string name="lbl_portugal">Portugal</string>
+    <string name="lbl_spain">Spain</string>
     <string name="lbl_playing">Playing</string>
     <string name="lbl_buffering">Buffering…</string>
     <string name="lbl_stopped">Stopped</string>

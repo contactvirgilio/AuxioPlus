@@ -40,6 +40,46 @@
             android:maxLines="1" />
     </com.google.android.material.textfield.TextInputLayout>
 
+    <HorizontalScrollView
+        android:id="@+id/country_bar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:scrollbars="none"
+        android:visibility="gone">
+
+        <com.google.android.material.chip.ChipGroup
+            android:id="@+id/country_chips"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:paddingHorizontal="12dp"
+            app:checkedChip="@+id/chip_all"
+            app:selectionRequired="true"
+            app:singleLine="true"
+            app:singleSelection="true">
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/chip_all"
+                style="@style/Widget.Material3.Chip.Filter"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/lbl_all_countries" />
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/chip_portugal"
+                style="@style/Widget.Material3.Chip.Filter"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/lbl_portugal" />
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/chip_spain"
+                style="@style/Widget.Material3.Chip.Filter"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/lbl_spain" />
+        </com.google.android.material.chip.ChipGroup>
+    </HorizontalScrollView>
+
     <com.google.android.material.progressindicator.LinearProgressIndicator
         android:id="@+id/search_progress"
         android:layout_width="match_parent"
@@ -155,8 +195,7 @@
                     android:id="@+id/mini_status"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:ellipsize="marquee"
-                    android:marqueeRepeatLimit="marquee_forever"
+                    android:ellipsize="end"
                     android:singleLine="true"
                     android:textAppearance="?attr/textAppearanceBodyMedium"
                     android:textColor="?attr/colorOnPrimaryContainer" />

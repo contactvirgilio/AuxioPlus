@@ -1,6 +1,5 @@
 package org.oxycblt.auxio.radio.visualizer
 
-import android.content.Context
 import android.media.AudioManager
 import android.os.Build
 import android.os.Bundle
@@ -11,34 +10,28 @@ import android.view.MotionEvent
 import android.view.ViewConfiguration
 import android.view.WindowManager
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.content.edit
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
-import androidx.core.view.isVisible
 import kotlin.math.abs
 import kotlin.math.roundToInt
 import org.oxycblt.auxio.radio.Favorites
 import org.oxycblt.auxio.radio.PlayerConnection
 import org.oxycblt.auxio.radio.R
 import org.oxycblt.auxio.radio.databinding.ActivityVisualizerBinding
-import org.oxycblt.auxio.radio.statusText
 
 /**
- * The visualizer on the whole screen, with the station and what's playing in a pill at the bottom.
- * It has no buttons: the back gesture leaves it. Only the middle of the screen (between the top
+ * The speaker grille visualizer on the whole screen, with no text and no buttons: the back gesture
+ * leaves it. Only the middle of the screen (between the top
  * quarter and the bottom fifth) reacts to touch, split in three columns:
  * - Left: double tap for the previous favourite, drag up or down for the brightness.
  * - Middle: tap to play or stop, long press to add or remove the station from favourites.
  * - Right: double tap for the next favourite, drag up or down for the volume.
- *
- * Tapping the pill switches between the colour cycling and the theme coloured visualizer.
  */
 class VisualizerActivity : AppCompatActivity() {
     private lateinit var binding: ActivityVisualizerBinding
     private lateinit var audioManager: AudioManager
     private lateinit var player: PlayerConnection
-    private val prefs by lazy { getSharedPreferences("visualizer", Context.MODE_PRIVATE) }
     private var downX = 0f
     private var downY = 0f
     private var adjusting = false
@@ -65,31 +58,7 @@ class VisualizerActivity : AppCompatActivity() {
             hide(WindowInsetsCompat.Type.systemBars())
         }
 
-        applyMode()
-        binding.visualizerPill.maxWidth = (resources.displayMetrics.widthPixels * 0.9f).toInt()
-        binding.visualizerPill.isSelected = true // Lets the marquee scroll.
-        binding.visualizerPill.isVisible = false
-        binding.visualizerPill.setOnClickListener {
-            prefs.edit { putBoolean(KEY_COLOURED, !prefs.getBoolean(KEY_COLOURED, true)) }
-            applyMode()
-        }
-
-        player =
-            PlayerConnection(this) { c ->
-                val name = c.currentMediaItem?.mediaMetadata?.station?.toString()
-                binding.visualizerPill.isVisible = name != null
-                if (name != null) {
-                    val text = "$name – ${c.statusText(this)}"
-                    if (binding.visualizerPill.text.toString() != text) binding.visualizerPill.text = text
-                }
-            }
-    }
-
-    private fun applyMode() {
-        binding.visualizerFull.setMode(
-            if (prefs.getBoolean(KEY_COLOURED, true)) VisualizerMode.SPECTRUM_CYCLE
-            else VisualizerMode.SPECTRUM
-        )
+        player = PlayerConnection(this) {}
     }
 
     private val gestures by lazy {
@@ -231,6 +200,5 @@ class VisualizerActivity : AppCompatActivity() {
         const val BAND_TOP = 0.25f
         const val BAND_BOTTOM = 0.82f
         const val LEVEL_MS = 900L
-        const val KEY_COLOURED = "coloured"
     }
 }

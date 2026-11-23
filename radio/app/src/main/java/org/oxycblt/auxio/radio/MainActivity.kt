@@ -38,6 +38,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var searchAdapter: StationAdapter
     private var searchJob: Job? = null
     private var lastQuery: String? = null
+    private var country: String? = null
     private var searchError = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -91,6 +92,16 @@ class MainActivity : AppCompatActivity() {
             } else false
         }
 
+        binding.countryChips.setOnCheckedStateChangeListener { _, ids ->
+            country =
+                when (ids.firstOrNull()) {
+                    R.id.chip_portugal -> "PT"
+                    R.id.chip_spain -> "ES"
+                    else -> null
+                }
+            scheduleSearch(binding.searchInput.text.toString(), 0, force = true)
+        }
+
         binding.bottomNav.setOnItemSelectedListener {
             showTab(it.itemId)
             true
@@ -130,6 +141,7 @@ class MainActivity : AppCompatActivity() {
         binding.favoritesList.isVisible = favorites
         binding.favoritesEmpty.isVisible = favorites && Favorites.stations.value.isEmpty()
         binding.searchBar.isVisible = !favorites
+        binding.countryBar.isVisible = !favorites
         binding.searchList.isVisible = !favorites
         binding.searchEmpty.isVisible = !favorites && searchError
         if (favorites) {
@@ -148,7 +160,7 @@ class MainActivity : AppCompatActivity() {
                 delay(delayMs)
                 binding.searchProgress.isVisible = true
                 try {
-                    val results = RadioBrowser.search(query)
+                    val results = RadioBrowser.search(query, country)
                     searchError = false
                     searchAdapter.submitList(results) { binding.searchList.scrollToPosition(0) }
                     binding.searchEmpty.setText(R.string.lng_no_results)
@@ -210,7 +222,6 @@ class MainActivity : AppCompatActivity() {
         val station = player.currentStation() ?: return
         binding.miniName.text = station.name
         binding.miniStatus.text = c.statusText(this)
-        binding.miniStatus.isSelected = true // Lets long song titles scroll.
         Logos.load(binding.miniLogo, binding.miniLetter, station)
         val playing = c.playWhenReady && c.playerError == null
         binding.miniPlay.setIconResource(if (playing) R.drawable.ic_pause else R.drawable.ic_play)

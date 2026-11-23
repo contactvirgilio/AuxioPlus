@@ -18,14 +18,21 @@ object RadioBrowser {
         )
     private var working = servers.first()
 
-    /** Stations whose name matches [query], most popular first. A blank query gives the top 50. */
-    suspend fun search(query: String): List<Station> =
+    /**
+     * Stations whose name matches [query], most popular first, in [country] (an ISO code like "PT")
+     * or anywhere. With no query, a country gives every station it has; no country gives the top 50.
+     */
+    suspend fun search(query: String, country: String? = null): List<Station> =
         withContext(Dispatchers.IO) {
+            val order = "hidebroken=true&order=clickcount&reverse=true"
+            val name = URLEncoder.encode(query.trim(), "UTF-8")
             val path =
-                if (query.isBlank()) "/json/stations/topclick/50?hidebroken=true"
-                else
-                    "/json/stations/search?limit=60&hidebroken=true&order=clickcount&reverse=true&name=" +
-                        URLEncoder.encode(query.trim(), "UTF-8")
+                when {
+                    country != null && query.isBlank() -> "/json/stations/bycountrycodeexact/$country?$order"
+                    country != null -> "/json/stations/search?$order&countrycode=$country&name=$name"
+                    query.isBlank() -> "/json/stations/topclick/50?hidebroken=true"
+                    else -> "/json/stations/search?limit=100&$order&name=$name"
+                }
             val array = JSONArray(get(path))
             val seen = HashSet<String>()
             buildList {
@@ -67,7 +74,7 @@ object RadioBrowser {
         throw last ?: IllegalStateException("No server")
     }
 
-    fun fetchText(url: String, maxBytes: Int = 4 * 1024 * 1024): String {
+    fun fetchText(url: String, maxBytes: Int = 24 * 1024 * 1024): String {
         val connection = URL(url).openConnection() as HttpURLConnection
         connection.connectTimeout = 8000
         connection.readTimeout = 10000
